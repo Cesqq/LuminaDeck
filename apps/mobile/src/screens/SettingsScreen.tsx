@@ -6,7 +6,9 @@ import {
   ScrollView,
   Switch,
   StyleSheet,
+  Alert,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import type { ThemeId, GridLayout } from '@luminadeck/shared';
 import { GRID_DIMENSIONS } from '@luminadeck/shared';
 import { THEMES } from '../lib/themes';
@@ -18,6 +20,7 @@ import {
   saveSettings,
   DEFAULT_SETTINGS,
 } from '../lib/storage';
+import { exportProfile, importProfile } from '../lib/profileExport';
 import type { AppSettings, HapticIntensity } from '../lib/storage';
 
 const GRID_OPTIONS: GridLayout[] = ['2x4', '3x4', '4x5'];
@@ -327,6 +330,70 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
                 maxFontSizeMultiplier={1.5}
               >
                 $9.99 \u2014 Unlock Pro
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Profile Import/Export (Pro) */}
+      {isPro && (
+        <View style={styles.section}>
+          <Text
+            style={[styles.sectionTitle, { color: colors.text }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          >
+            Profile
+          </Text>
+          <View style={styles.optionRow}>
+            <TouchableOpacity
+              style={[styles.optionCard, { backgroundColor: colors.buttonBackground, borderColor: colors.buttonBorder }]}
+              onPress={async () => {
+                try {
+                  await exportProfile();
+                } catch {
+                  Alert.alert('Export Failed', 'Could not export profile.');
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Export profile"
+            >
+              <Text style={[styles.optionCardTitle, { color: colors.text }]} allowFontScaling maxFontSizeMultiplier={1.5}>
+                Export
+              </Text>
+              <Text style={[styles.optionCardSub, { color: colors.textSecondary }]} allowFontScaling maxFontSizeMultiplier={1.5}>
+                Share profile
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.optionCard, { backgroundColor: colors.buttonBackground, borderColor: colors.buttonBorder }]}
+              onPress={async () => {
+                try {
+                  const result = await DocumentPicker.getDocumentAsync({
+                    type: 'application/json',
+                    copyToCacheDirectory: true,
+                  });
+                  if (!result.canceled && result.assets?.[0]) {
+                    const success = await importProfile(result.assets[0].uri);
+                    if (success) {
+                      Alert.alert('Imported', 'Profile loaded successfully. Restart the app to see changes.');
+                    } else {
+                      Alert.alert('Invalid File', 'This file is not a valid LuminaDeck profile.');
+                    }
+                  }
+                } catch {
+                  Alert.alert('Import Failed', 'Could not import profile.');
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Import profile"
+            >
+              <Text style={[styles.optionCardTitle, { color: colors.text }]} allowFontScaling maxFontSizeMultiplier={1.5}>
+                Import
+              </Text>
+              <Text style={[styles.optionCardSub, { color: colors.textSecondary }]} allowFontScaling maxFontSizeMultiplier={1.5}>
+                Load profile
               </Text>
             </TouchableOpacity>
           </View>

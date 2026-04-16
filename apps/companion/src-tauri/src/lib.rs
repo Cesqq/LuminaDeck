@@ -4,6 +4,7 @@ mod security;
 mod discovery;
 
 use tauri::Manager;
+use tauri::tray::TrayIconBuilder;
 use security::pairing::{PairedDevice, QrPairingPayload};
 use serde::Serialize;
 use std::sync::Arc;
@@ -233,6 +234,30 @@ pub fn run() {
                 Err(e) => {
                     log::error!("Failed to generate TLS cert: {}", e);
                 }
+            }
+
+            // Setup system tray
+            let _ = TrayIconBuilder::new()
+                .tooltip("LuminaDeck Companion")
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        button_state: tauri::tray::MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
+            // Show the main window
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
             }
 
             // Start WebSocket server in background
