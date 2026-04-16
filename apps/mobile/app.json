@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "LuminaDeck",
+    "slug": "luminadeck",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "luminadeck",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D0D0D"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.luminadeck.app",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "LuminaDeck discovers and connects to the LuminaDeck Companion app on your PC over your local WiFi network to send button commands.",
+        "NSBonjourServices": ["_luminadeck._tcp"],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D0D0D"
+      },
+      "package": "com.luminadeck.app"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "PLACEHOLDER"
+      }
+    }
+  }
+}

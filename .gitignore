@@ -1,7 +1,69 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
 dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Expo / React Native
+apps/mobile/.expo/
+apps/mobile/ios/
+apps/mobile/android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Tauri
+apps/companion/src-tauri/target/
+apps/companion/src-tauri/WixTools/
+apps/companion/src-tauri/gen/
+
+# Rust
+target/
+Cargo.lock
+
+# Environment
 .env
 .env.*
-*.log
+.env.local
+.env.production
+
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Turbo
+.turbo/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Secrets (NEVER commit)
+*.pem
+*.cert
+*.crt
+*.csr
+credentials.json
+secrets.json

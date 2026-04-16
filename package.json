@@ -1,0 +1,20 @@
+{
+  "name": "luminadeck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "iPhone macro deck + Windows companion for PC control over local WiFi",
+  "scripts": {
+    "dev:mobile": "pnpm --filter @luminadeck/mobile start",
+    "dev:companion": "pnpm --filter @luminadeck/companion tauri dev",
+    "build:mobile": "pnpm --filter @luminadeck/mobile build",
+    "build:companion": "pnpm --filter @luminadeck/companion tauri build",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
+  }
+}
