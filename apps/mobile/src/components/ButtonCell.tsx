@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import type { ButtonConfig, ThemeColors } from '@luminadeck/shared';
+import { IconView } from './IconView';
 
 interface ButtonCellProps {
   button: ButtonConfig | null;
@@ -59,13 +60,15 @@ export function ButtonCell({
           : 'No action assigned. Long press to edit.'
       }
     >
-      {/* Icon: custom image or letter placeholder */}
+      {/* Icon: custom image > icon pack > letter fallback */}
       {button.customImage ? (
         <Image
           source={{ uri: button.customImage }}
           style={styles.customImage}
           accessibilityLabel={`${button.label ?? 'Button'} icon`}
         />
+      ) : button.icon ? (
+        <IconView name={button.icon} size={28} color={colors.accent} />
       ) : (
         <View style={styles.iconPlaceholder}>
           <Text

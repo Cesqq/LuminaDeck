@@ -22,6 +22,8 @@ import { VALID_KEYS, MODIFIER_KEYS } from '@luminadeck/shared';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePro } from '../contexts/ProContext';
 import { pickButtonImage } from '../lib/imagePicker';
+import { ICON_CATEGORIES, getIconsByCategory, getAllIcons, type IconCategory } from '../lib/icons';
+import { IconView } from '../components/IconView';
 
 // --- Key categories for the picker ---
 
@@ -172,6 +174,10 @@ export function EditorScreen({
     button.action?.type === 'system_action' ? button.action.action : 'volume_up',
   );
 
+  // Icon state
+  const [selectedIcon, setSelectedIcon] = useState<string | undefined>(button.icon);
+  const [iconCategory, setIconCategory] = useState<IconCategory>('system');
+
   // Multi-action state
   const [subActions, setSubActions] = useState<SubAction[]>(
     () => initSubActionsFromButton(button),
@@ -272,12 +278,13 @@ export function EditorScreen({
       ...button,
       action: builtAction,
       label: label.trim() || undefined,
+      icon: selectedIcon,
       color: selectedColor,
       customImage,
     };
 
     onSave(updated);
-  }, [button, builtAction, label, selectedColor, customImage, onSave]);
+  }, [button, builtAction, label, selectedIcon, selectedColor, customImage, onSave]);
 
   const handleImagePicker = useCallback(async () => {
     if (!isPro) {
@@ -362,13 +369,17 @@ export function EditorScreen({
           accessibilityRole="image"
           accessibilityLabel={`Button preview: ${label || 'Untitled'}`}
         >
-          <Text
-            style={[styles.previewIcon, { color: colors.accent }]}
-            allowFontScaling
-            maxFontSizeMultiplier={1.5}
-          >
-            {label?.charAt(0)?.toUpperCase() ?? '?'}
-          </Text>
+          {selectedIcon ? (
+            <IconView name={selectedIcon} size={28} color={colors.accent} />
+          ) : (
+            <Text
+              style={[styles.previewIcon, { color: colors.accent }]}
+              allowFontScaling
+              maxFontSizeMultiplier={1.5}
+            >
+              {label?.charAt(0)?.toUpperCase() ?? '?'}
+            </Text>
+          )}
           {label ? (
             <Text
               style={[styles.previewLabel, { color: colors.text }]}
@@ -1082,6 +1093,107 @@ export function EditorScreen({
                 accessibilityLabel={`Color ${hex}${isSelected ? ', selected' : ''}`}
                 accessibilityState={{ selected: isSelected }}
               />
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Icon Picker */}
+      <View style={styles.section}>
+        <Text
+          style={[styles.sectionTitle, { color: colors.text }]}
+          allowFontScaling
+          maxFontSizeMultiplier={1.5}
+        >
+          Icon
+        </Text>
+
+        {/* Icon category tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ maxHeight: 36, marginBottom: 10 }}
+          contentContainerStyle={{ gap: 4 }}
+        >
+          {ICON_CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[
+                styles.categoryTab,
+                {
+                  backgroundColor: iconCategory === cat ? colors.accent + '33' : 'transparent',
+                  borderBottomColor: iconCategory === cat ? colors.accent : 'transparent',
+                },
+              ]}
+              onPress={() => setIconCategory(cat)}
+              accessibilityRole="tab"
+              accessibilityLabel={`${cat} icons category`}
+              accessibilityState={{ selected: iconCategory === cat }}
+            >
+              <Text
+                style={[
+                  styles.categoryTabText,
+                  { color: iconCategory === cat ? colors.accent : colors.textSecondary },
+                ]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Icon grid */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {/* No-icon option */}
+          <TouchableOpacity
+            style={[
+              styles.keyButton,
+              {
+                backgroundColor: !selectedIcon ? colors.accent : colors.buttonBackground,
+                borderColor: !selectedIcon ? colors.accent : colors.buttonBorder,
+                width: 44,
+                height: 44,
+                justifyContent: 'center',
+                alignItems: 'center',
+              },
+            ]}
+            onPress={() => setSelectedIcon(undefined)}
+            accessibilityRole="button"
+            accessibilityLabel="No icon"
+            accessibilityState={{ selected: !selectedIcon }}
+          >
+            <Text style={{ color: !selectedIcon ? '#FFF' : colors.textSecondary, fontSize: 11, fontWeight: '700' }}>None</Text>
+          </TouchableOpacity>
+
+          {getIconsByCategory(iconCategory).map((icon) => {
+            const isSelected = selectedIcon === icon.name;
+            return (
+              <TouchableOpacity
+                key={icon.name}
+                style={[
+                  styles.keyButton,
+                  {
+                    backgroundColor: isSelected ? colors.accent : colors.buttonBackground,
+                    borderColor: isSelected ? colors.accent : colors.buttonBorder,
+                    width: 44,
+                    height: 44,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  },
+                ]}
+                onPress={() => setSelectedIcon(icon.name)}
+                accessibilityRole="button"
+                accessibilityLabel={`${icon.name} icon${isSelected ? ', selected' : ''}`}
+                accessibilityState={{ selected: isSelected }}
+              >
+                <IconView
+                  name={icon.name}
+                  size={22}
+                  color={isSelected ? '#FFFFFF' : colors.text}
+                />
+              </TouchableOpacity>
             );
           })}
         </View>
