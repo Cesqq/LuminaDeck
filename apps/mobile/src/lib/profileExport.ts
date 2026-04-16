@@ -1,5 +1,5 @@
 import { loadProfile, saveProfile } from './storage';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system/next';
 import * as Sharing from 'expo-sharing';
 import type { ProfileConfig, PageConfig, ButtonConfig } from '@luminadeck/shared';
 
@@ -12,18 +12,17 @@ const EXPORT_FILE_NAME = 'luminadeck-profile.json';
 export async function exportProfile(): Promise<void> {
   const profile = await loadProfile();
   const json = JSON.stringify(profile, null, 2);
-  const fileUri = FileSystem.cacheDirectory + EXPORT_FILE_NAME;
+  const file = new File(Paths.cache, EXPORT_FILE_NAME);
 
-  await FileSystem.writeAsStringAsync(fileUri, json, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  file.create();
+  file.write(json);
 
   const sharingAvailable = await Sharing.isAvailableAsync();
   if (!sharingAvailable) {
     throw new Error('Sharing is not available on this device.');
   }
 
-  await Sharing.shareAsync(fileUri, {
+  await Sharing.shareAsync(file.uri, {
     mimeType: 'application/json',
     dialogTitle: 'Export LuminaDeck Profile',
     UTI: 'public.json',
@@ -102,9 +101,8 @@ function isValidButton(obj: unknown): obj is ButtonConfig {
  */
 export async function importProfile(uri: string): Promise<boolean> {
   try {
-    const content = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
+    const file = new File(uri);
+    const content = await file.text();
 
     const parsed: unknown = JSON.parse(content);
 
