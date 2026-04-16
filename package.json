@@ -2,6 +2,7 @@
   "name": "luminadeck",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "description": "iPhone macro deck + Windows companion for PC control over local WiFi",
   "scripts": {
     "dev:mobile": "pnpm --filter @luminadeck/mobile start",

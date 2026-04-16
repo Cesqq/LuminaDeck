@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nickel-org/tauri/v2/core/tauri-config-schema/schema.json",
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/v2/crates/tauri-config-schema/schema.json",
   "productName": "LuminaDeck Companion",
   "version": "0.1.0",
   "identifier": "com.luminadeck.companion",
@@ -8,21 +8,26 @@
     "devUrl": "http://localhost:1420"
   },
   "app": {
-    "withGlobalTauri": false,
+    "withGlobalTauri": true,
     "trayIcon": {
       "iconPath": "icons/icon.png",
       "iconAsTemplate": false
     },
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'; img-src 'self' data:; font-src 'self'"
     },
     "windows": [
       {
+        "label": "main",
         "title": "LuminaDeck Companion",
         "width": 480,
         "height": 640,
+        "minWidth": 400,
+        "minHeight": 500,
         "resizable": true,
-        "visible": false
+        "visible": false,
+        "center": true,
+        "decorations": true
       }
     ]
   },
@@ -37,9 +42,17 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
       }
     }
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://luminadeck.app/api/updates/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "pubkey": "PLACEHOLDER_UPDATER_PUBKEY"
+    }
+  }
 }

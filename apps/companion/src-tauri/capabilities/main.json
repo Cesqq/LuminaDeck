@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/v2/crates/tauri-utils/schema/capability.json",
+  "identifier": "main-capability",
+  "description": "Permissions for the main LuminaDeck Companion window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "core:tray:default"
+  ]
+}
