@@ -19,7 +19,9 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "LuminaDeck discovers and connects to the LuminaDeck Companion app on your PC over your local WiFi network to send button commands.",
-        "NSBonjourServices": ["_luminadeck._tcp"],
+        "NSBonjourServices": [
+          "_luminadeck._tcp"
+        ],
         "NSCameraUsageDescription": "LuminaDeck uses the camera to scan QR codes for quick pairing with your PC companion app.",
         "NSPhotoLibraryUsageDescription": "LuminaDeck lets you choose images from your photo library to customize button icons.",
         "ITSAppUsesNonExemptEncryption": false
@@ -31,7 +33,9 @@
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
           }
         ],
         "NSPrivacyCollectedDataTypes": [],
@@ -44,25 +48,22 @@
         "backgroundColor": "#0D0D0D"
       },
       "package": "com.luminadeck.app",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-secure-store",
       "expo-camera",
-      "expo-image-picker",
-      [
-        "react-native-purchases",
-        {
-          "ios": {
-            "usesStoreKit2JWS": true
-          }
-        }
-      ]
+      "expo-image-picker"
     ],
     "extra": {
       "eas": {
-        "projectId": "PLACEHOLDER"
+        "projectId": "5487c725-c788-4978-a67e-1da84e7c172e"
       }
-    }
+    },
+    "owner": "iczr"
   }
 }
