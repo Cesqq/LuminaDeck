@@ -15,6 +15,7 @@ pub struct AppState {
     pub paired_devices: Arc<Mutex<Vec<PairedDevice>>>,
     pub cert_fingerprint: Arc<Mutex<String>>,
     pub connected_count: Arc<Mutex<u32>>,
+    pub server_started_at: Arc<Mutex<Option<u64>>>,
 }
 
 impl Default for AppState {
@@ -23,6 +24,7 @@ impl Default for AppState {
             paired_devices: Arc::new(Mutex::new(Vec::new())),
             cert_fingerprint: Arc::new(Mutex::new(String::new())),
             connected_count: Arc::new(Mutex::new(0)),
+            server_started_at: Arc::new(Mutex::new(None)),
         }
     }
 }

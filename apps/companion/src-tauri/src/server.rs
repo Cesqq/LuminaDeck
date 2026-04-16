@@ -1,8 +1,11 @@
 use crate::actions;
 use crate::security::tls;
+use tauri::Emitter;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::Instant;
 use parking_lot::Mutex;
 use tokio::net::TcpListener;
@@ -12,6 +15,41 @@ use futures_util::{SinkExt, StreamExt};
 const DEFAULT_PORT: u16 = 9876;
 const RATE_LIMIT_WINDOW_MS: u128 = 1000;
 const RATE_LIMIT_MAX_ACTIONS: u32 = 50;
+
+/// Connection statistics tracked globally.
+pub struct ConnectionStats {
+    pub active_connections: AtomicU32,
+    pub total_connections: AtomicU64,
+    pub total_actions_executed: AtomicU64,
+    pub total_actions_rejected: AtomicU64,
+}
+
+impl ConnectionStats {
+    pub fn new() -> Self {
+        Self {
+            active_connections: AtomicU32::new(0),
+            total_connections: AtomicU64::new(0),
+            total_actions_executed: AtomicU64::new(0),
+            total_actions_rejected: AtomicU64::new(0),
+        }
+    }
+}
+
+/// Event payload emitted to Tauri frontend.
+#[derive(Clone, Serialize)]
+struct ConnectionEvent {
+    event_type: String, // "connected" | "disconnected"
+    peer: String,
+    active_count: u32,
+}
+
+#[derive(Clone, Serialize)]
+pub struct StatsSnapshot {
+    pub active_connections: u32,
+    pub total_connections: u64,
+    pub total_actions_executed: u64,
+    pub total_actions_rejected: u64,
+}
 
 /// Per-peer rate limiter.
 struct RateLimiter {
@@ -61,7 +99,7 @@ impl RateLimiter {
 
 /// Start the WebSocket server with TLS.
 pub async fn start_server(
-    _app_handle: tauri::AppHandle,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Ensure TLS certificate exists
     let cert_der = tls::ensure_tls_cert()?;
@@ -86,6 +124,7 @@ pub async fn start_server(
 
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(config));
     let rate_limiter = Arc::new(RateLimiter::new());
+    let stats = Arc::new(ConnectionStats::new());
 
     // Bind listener
     let addr = SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT));
@@ -96,15 +135,38 @@ pub async fn start_server(
         let (stream, peer_addr) = listener.accept().await?;
         let tls_acceptor = tls_acceptor.clone();
         let limiter = rate_limiter.clone();
+        let conn_stats = stats.clone();
+        let handle = app_handle.clone();
 
         tokio::spawn(async move {
             match tls_acceptor.accept(stream).await {
                 Ok(tls_stream) => {
-                    log::info!("TLS connection from {}", peer_addr);
-                    if let Err(e) = handle_connection(tls_stream, peer_addr, &limiter).await {
+                    // Track connection
+                    let active = conn_stats.active_connections.fetch_add(1, Ordering::Relaxed) + 1;
+                    conn_stats.total_connections.fetch_add(1, Ordering::Relaxed);
+                    log::info!("TLS connection from {} (active: {})", peer_addr, active);
+
+                    // Emit event to frontend
+                    let _ = handle.emit("connection-change", ConnectionEvent {
+                        event_type: "connected".to_string(),
+                        peer: peer_addr.to_string(),
+                        active_count: active,
+                    });
+
+                    if let Err(e) = handle_connection(tls_stream, peer_addr, &limiter, &conn_stats).await {
                         log::error!("Connection error from {}: {}", peer_addr, e);
                     }
+
+                    // Track disconnection
                     limiter.remove_peer(&peer_addr);
+                    let active = conn_stats.active_connections.fetch_sub(1, Ordering::Relaxed) - 1;
+                    log::info!("Disconnected {} (active: {})", peer_addr, active);
+
+                    let _ = handle.emit("connection-change", ConnectionEvent {
+                        event_type: "disconnected".to_string(),
+                        peer: peer_addr.to_string(),
+                        active_count: active,
+                    });
                 }
                 Err(e) => {
                     log::warn!("TLS handshake failed from {}: {}", peer_addr, e);
@@ -118,6 +180,7 @@ async fn handle_connection(
     tls_stream: tokio_rustls::server::TlsStream<tokio::net::TcpStream>,
     peer_addr: SocketAddr,
     rate_limiter: &RateLimiter,
+    stats: &ConnectionStats,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ws_stream = tokio_tungstenite::accept_async(tls_stream).await?;
     log::info!("WebSocket upgrade from {}", peer_addr);
@@ -129,7 +192,7 @@ async fn handle_connection(
 
         match msg {
             Message::Text(text) => {
-                let response = handle_message(&text, peer_addr, rate_limiter).await;
+                let response = handle_message(&text, peer_addr, rate_limiter, stats).await;
                 write.send(Message::Text(response.into())).await?;
             }
             Message::Ping(data) => {
@@ -147,7 +210,7 @@ async fn handle_connection(
 }
 
 /// Handle an incoming JSON message from the phone.
-async fn handle_message(text: &str, peer: SocketAddr, rate_limiter: &RateLimiter) -> String {
+async fn handle_message(text: &str, peer: SocketAddr, rate_limiter: &RateLimiter, stats: &ConnectionStats) -> String {
     let msg: serde_json::Value = match serde_json::from_str(text) {
         Ok(v) => v,
         Err(e) => {
@@ -196,6 +259,7 @@ async fn handle_message(text: &str, peer: SocketAddr, rate_limiter: &RateLimiter
         "execute" => {
             // Rate limit check
             if !rate_limiter.check(peer) {
+                stats.total_actions_rejected.fetch_add(1, Ordering::Relaxed);
                 return serde_json::json!({
                     "type": "error",
                     "code": "RATE_LIMITED",
@@ -211,17 +275,23 @@ async fn handle_message(text: &str, peer: SocketAddr, rate_limiter: &RateLimiter
                     match serde_json::from_value::<actions::Action>(action_json.clone()) {
                         Ok(action) => {
                             match actions::execute_action(&action).await {
-                                Ok(()) => serde_json::json!({
-                                    "type": "execute_result",
-                                    "id": id,
-                                    "success": true
-                                }).to_string(),
-                                Err(e) => serde_json::json!({
-                                    "type": "execute_result",
-                                    "id": id,
-                                    "success": false,
-                                    "error": e.to_string()
-                                }).to_string(),
+                                Ok(()) => {
+                                    stats.total_actions_executed.fetch_add(1, Ordering::Relaxed);
+                                    serde_json::json!({
+                                        "type": "execute_result",
+                                        "id": id,
+                                        "success": true
+                                    }).to_string()
+                                }
+                                Err(e) => {
+                                    stats.total_actions_rejected.fetch_add(1, Ordering::Relaxed);
+                                    serde_json::json!({
+                                        "type": "execute_result",
+                                        "id": id,
+                                        "success": false,
+                                        "error": e.to_string()
+                                    }).to_string()
+                                }
                             }
                         }
                         Err(e) => serde_json::json!({

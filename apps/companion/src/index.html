@@ -369,6 +369,7 @@
 
   <script type="module">
     const { invoke } = window.__TAURI__.core;
+    const { listen } = window.__TAURI__.event;
 
     // --- Tab switching ---
     document.querySelectorAll('.tab').forEach(tab => {
@@ -512,14 +513,34 @@
       return div.innerHTML;
     }
 
+    // --- Listen for real-time connection events ---
+    listen('connection-change', (event) => {
+      const { event_type, peer, active_count } = event.payload;
+      console.log(`[Event] ${event_type}: ${peer} (active: ${active_count})`);
+
+      // Update connected count immediately
+      document.getElementById('connected-count').textContent = String(active_count);
+
+      // Update header subtitle
+      const subtitle = document.getElementById('header-subtitle');
+      if (active_count > 0) {
+        subtitle.textContent = `${active_count} device(s) connected`;
+      } else {
+        subtitle.textContent = 'Waiting for iPhone connection...';
+      }
+
+      // Refresh full info for any other fields
+      refreshInfo();
+    });
+
     // --- Initialize ---
     refreshInfo();
     generateQR();
     refreshDevices();
 
-    // Poll for updates
-    setInterval(refreshInfo, 3000);
-    setInterval(refreshDevices, 10000);
+    // Poll for updates (less frequent now that we have events)
+    setInterval(refreshInfo, 10000);
+    setInterval(refreshDevices, 30000);
   </script>
 </body>
 </html>
