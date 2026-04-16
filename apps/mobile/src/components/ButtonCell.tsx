@@ -3,6 +3,7 @@ import {
   TouchableOpacity,
   Text,
   View,
+  Image,
   StyleSheet,
   type ViewStyle,
 } from 'react-native';
@@ -54,16 +55,28 @@ export function ButtonCell({
       accessibilityLabel={button.label ?? 'Button'}
       accessibilityHint={
         button.action
-          ? `Executes ${button.action.type} action`
-          : 'No action assigned'
+          ? `Tap to execute ${button.action.type.replace('_', ' ')} action. Long press to edit.`
+          : 'No action assigned. Long press to edit.'
       }
     >
-      {/* Icon placeholder — will render SVG/image when icon packs are ready */}
-      <View style={styles.iconPlaceholder}>
-        <Text style={[styles.iconText, { color: colors.accent }]}>
-          {button.label?.charAt(0)?.toUpperCase() ?? '?'}
-        </Text>
-      </View>
+      {/* Icon: custom image or letter placeholder */}
+      {button.customImage ? (
+        <Image
+          source={{ uri: button.customImage }}
+          style={styles.customImage}
+          accessibilityLabel={`${button.label ?? 'Button'} icon`}
+        />
+      ) : (
+        <View style={styles.iconPlaceholder}>
+          <Text
+            style={[styles.iconText, { color: colors.accent }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.3}
+          >
+            {button.label?.charAt(0)?.toUpperCase() ?? '?'}
+          </Text>
+        </View>
+      )}
 
       {button.label ? (
         <Text
@@ -81,6 +94,12 @@ export function ButtonCell({
 }
 
 const styles = StyleSheet.create({
+  customImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
   iconPlaceholder: {
     width: 32,
     height: 32,
