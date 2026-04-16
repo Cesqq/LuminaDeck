@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
-  TouchableOpacity,
+  Pressable,
   Text,
   View,
   Image,
+  Animated,
   StyleSheet,
   type ViewStyle,
 } from 'react-native';
@@ -25,6 +26,26 @@ export function ButtonCell({
   onPress,
   onLongPress,
 }: ButtonCellProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.92,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 4,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 6,
+    }).start();
+  }, [scaleAnim]);
+
   const cellStyle: ViewStyle = {
     width: size,
     height: size,
@@ -47,52 +68,55 @@ export function ButtonCell({
   }
 
   return (
-    <TouchableOpacity
-      style={cellStyle}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={button.label ?? 'Button'}
-      accessibilityHint={
-        button.action
-          ? `Tap to execute ${button.action.type.replace('_', ' ')} action. Long press to edit.`
-          : 'No action assigned. Long press to edit.'
-      }
-    >
-      {/* Icon: custom image > icon pack > letter fallback */}
-      {button.customImage ? (
-        <Image
-          source={{ uri: button.customImage }}
-          style={styles.customImage}
-          accessibilityLabel={`${button.label ?? 'Button'} icon`}
-        />
-      ) : button.icon ? (
-        <IconView name={button.icon} size={28} color={colors.accent} />
-      ) : (
-        <View style={styles.iconPlaceholder}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Pressable
+        style={cellStyle}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={button.label ?? 'Button'}
+        accessibilityHint={
+          button.action
+            ? `Tap to execute ${button.action.type.replace('_', ' ')} action. Long press to edit.`
+            : 'No action assigned. Long press to edit.'
+        }
+      >
+        {/* Icon: custom image > icon pack > letter fallback */}
+        {button.customImage ? (
+          <Image
+            source={{ uri: button.customImage }}
+            style={styles.customImage}
+            accessibilityLabel={`${button.label ?? 'Button'} icon`}
+          />
+        ) : button.icon ? (
+          <IconView name={button.icon} size={28} color={colors.accent} />
+        ) : (
+          <View style={styles.iconPlaceholder}>
+            <Text
+              style={[styles.iconText, { color: colors.accent }]}
+              allowFontScaling
+              maxFontSizeMultiplier={1.3}
+            >
+              {button.label?.charAt(0)?.toUpperCase() ?? '?'}
+            </Text>
+          </View>
+        )}
+
+        {button.label ? (
           <Text
-            style={[styles.iconText, { color: colors.accent }]}
+            style={[styles.label, { color: colors.text }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
             allowFontScaling
             maxFontSizeMultiplier={1.3}
           >
-            {button.label?.charAt(0)?.toUpperCase() ?? '?'}
+            {button.label}
           </Text>
-        </View>
-      )}
-
-      {button.label ? (
-        <Text
-          style={[styles.label, { color: colors.text }]}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          allowFontScaling
-          maxFontSizeMultiplier={1.3}
-        >
-          {button.label}
-        </Text>
-      ) : null}
-    </TouchableOpacity>
+        ) : null}
+      </Pressable>
+    </Animated.View>
   );
 }
 

@@ -4,6 +4,7 @@ mod security;
 mod discovery;
 
 use tauri::Manager;
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::TrayIconBuilder;
 use security::pairing::{PairedDevice, QrPairingPayload};
 use serde::Serialize;
@@ -133,6 +134,20 @@ fn get_network_info() -> Vec<NetworkInterface> {
     get_network_interfaces()
 }
 
+#[tauri::command]
+fn start_pairing_broadcast() -> Result<String, String> {
+    // In production this would toggle the DiscoveryManager
+    // For now, log and return success
+    log::info!("Pairing broadcast started");
+    Ok("broadcasting".to_string())
+}
+
+#[tauri::command]
+fn stop_pairing_broadcast() -> Result<String, String> {
+    log::info!("Pairing broadcast stopped");
+    Ok("stopped".to_string())
+}
+
 #[derive(Serialize)]
 struct NetworkInterface {
     name: String,
@@ -221,6 +236,8 @@ pub fn run() {
             add_paired_device,
             remove_paired_device,
             get_network_info,
+            start_pairing_broadcast,
+            stop_pairing_broadcast,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -238,9 +255,40 @@ pub fn run() {
                 }
             }
 
-            // Setup system tray
+            // Setup system tray with context menu
+            let show_item = MenuItemBuilder::with_id("show", "Show Window").build(app)?;
+            let hide_item = MenuItemBuilder::with_id("hide", "Hide Window").build(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+
+            let tray_menu = MenuBuilder::new(app)
+                .item(&show_item)
+                .item(&hide_item)
+                .separator()
+                .item(&quit_item)
+                .build()?;
+
             let _ = TrayIconBuilder::new()
                 .tooltip("LuminaDeck Companion")
+                .menu(&tray_menu)
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "hide" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.hide();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
                 .on_tray_icon_event(|tray, event| {
                     if let tauri::tray::TrayIconEvent::Click {
                         button: tauri::tray::MouseButton::Left,
