@@ -101,6 +101,9 @@ impl RateLimiter {
 pub async fn start_server(
     app_handle: tauri::AppHandle,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Install the default rustls crypto provider
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     // Ensure TLS certificate exists
     let cert_der = tls::ensure_tls_cert()?;
     let fingerprint = crate::security::cert_fingerprint(&cert_der);
