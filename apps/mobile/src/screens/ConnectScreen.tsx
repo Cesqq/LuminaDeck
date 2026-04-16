@@ -10,11 +10,12 @@ import {
   Linking,
 } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import type { PairedDevice } from '@luminadeck/shared';
+import type { PairedDevice, QRPairingPayload } from '@luminadeck/shared';
 import { DEFAULT_PORT } from '@luminadeck/shared';
 import { useTheme } from '../contexts/ThemeContext';
 import { useConnection } from '../contexts/ConnectionContext';
 import { ConnectionStatus } from '../components/ConnectionStatus';
+import { QRScannerModal } from '../components/QRScannerModal';
 
 const PAIRED_DEVICES_KEY = 'luminadeck_paired_devices';
 
@@ -24,6 +25,7 @@ export function ConnectScreen() {
   const [ipAddress, setIpAddress] = useState('');
   const [port, setPort] = useState(String(DEFAULT_PORT));
   const [pairedDevices, setPairedDevices] = useState<PairedDevice[]>([]);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   useEffect(() => {
     loadPairedDevices();
@@ -133,11 +135,28 @@ export function ConnectScreen() {
   );
 
   const handleQRScan = useCallback(() => {
-    Alert.alert(
-      'QR Scanner',
-      'Camera-based QR scanning will be available in a future update. For now, enter the IP address manually from the companion app.',
-    );
+    setShowQRScanner(true);
   }, []);
+
+  const handleQRPayload = useCallback(
+    (payload: QRPairingPayload) => {
+      setShowQRScanner(false);
+      setIpAddress(payload.ip);
+      setPort(String(payload.port));
+      connect(payload.ip, payload.port);
+
+      const deviceId = `${payload.ip}:${payload.port}`;
+      savePairedDevice({
+        id: deviceId,
+        name: payload.companionName || `PC at ${payload.ip}`,
+        ip: payload.ip,
+        port: payload.port,
+        certFingerprint: payload.certFingerprint,
+        pairedAt: new Date().toISOString(),
+      });
+    },
+    [connect, pairedDevices],
+  );
 
   return (
     <ScrollView
@@ -369,6 +388,13 @@ export function ConnectScreen() {
           ))
         )}
       </View>
+
+      {/* QR Scanner Modal */}
+      <QRScannerModal
+        visible={showQRScanner}
+        onScan={handleQRPayload}
+        onClose={() => setShowQRScanner(false)}
+      />
 
       {/* Download Companion Info */}
       <View style={[styles.section, styles.infoSection]}>

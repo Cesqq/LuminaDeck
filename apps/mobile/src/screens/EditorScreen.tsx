@@ -16,10 +16,12 @@ import type {
   AppLaunchAction,
   SystemAction,
   SystemActionName,
+  MultiAction,
 } from '@luminadeck/shared';
 import { VALID_KEYS, MODIFIER_KEYS } from '@luminadeck/shared';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePro } from '../contexts/ProContext';
+import { pickButtonImage } from '../lib/imagePicker';
 
 // --- Key categories for the picker ---
 
@@ -93,6 +95,45 @@ const PALETTE_COLORS = [
   '#4CAF50', '#2196F3', '#FF5722', '#9C27B0', '#607D8B',
 ];
 
+type SubActionType = 'keybind' | 'app_launch' | 'system_action';
+
+interface SubAction {
+  id: string;
+  type: SubActionType;
+  keys: string[];
+  appPath: string;
+  systemAction: SystemActionName;
+  delay: number; // ms before next action
+}
+
+function createSubAction(): SubAction {
+  return {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    type: 'keybind',
+    keys: [],
+    appPath: '',
+    systemAction: 'volume_up',
+    delay: 0,
+  };
+}
+
+function initSubActionsFromButton(button: ButtonConfig): SubAction[] {
+  if (button.action?.type !== 'multi_action') return [];
+  const ma = button.action as MultiAction;
+  return ma.actions.map((a, i) => {
+    const base = createSubAction();
+    base.type = a.type;
+    if (a.type === 'keybind') base.keys = [...a.keys];
+    if (a.type === 'app_launch') base.appPath = a.path;
+    if (a.type === 'system_action') base.systemAction = a.action;
+    base.delay = ma.delays?.[i] ?? 0;
+    return base;
+  });
+}
+
+const MAX_SUB_ACTIONS = 10;
+const MAX_DELAY_MS = 5000;
+
 interface EditorScreenProps {
   button: ButtonConfig;
   pageIndex: number;
@@ -131,6 +172,41 @@ export function EditorScreen({
     button.action?.type === 'system_action' ? button.action.action : 'volume_up',
   );
 
+  // Multi-action state
+  const [subActions, setSubActions] = useState<SubAction[]>(
+    () => initSubActionsFromButton(button),
+  );
+
+  // Custom image state
+  const [customImage, setCustomImage] = useState<string | undefined>(button.customImage);
+
+  const addSubAction = useCallback(() => {
+    setSubActions((prev) => {
+      if (prev.length >= MAX_SUB_ACTIONS) return prev;
+      return [...prev, createSubAction()];
+    });
+  }, []);
+
+  const removeSubAction = useCallback((id: string) => {
+    setSubActions((prev) => prev.filter((sa) => sa.id !== id));
+  }, []);
+
+  const updateSubAction = useCallback((id: string, updates: Partial<SubAction>) => {
+    setSubActions((prev) =>
+      prev.map((sa) => (sa.id === id ? { ...sa, ...updates } : sa)),
+    );
+  }, []);
+
+  const moveSubAction = useCallback((index: number, direction: 'up' | 'down') => {
+    setSubActions((prev) => {
+      const next = [...prev];
+      const target = direction === 'up' ? index - 1 : index + 1;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }, []);
+
   const toggleKey = useCallback(
     (key: string) => {
       setSelectedKeys((prev) => {
@@ -160,13 +236,31 @@ export function EditorScreen({
         return { type: 'app_launch', path: appPath.trim() };
       case 'system_action':
         return { type: 'system_action', action: systemAction };
-      case 'multi_action':
-        // Multi-action builder is a Pro feature, placeholder for now
-        return null;
+      case 'multi_action': {
+        if (subActions.length === 0) return null;
+        const actions: (KeybindAction | AppLaunchAction | SystemAction)[] = [];
+        for (const sa of subActions) {
+          switch (sa.type) {
+            case 'keybind':
+              if (sa.keys.length === 0) return null;
+              actions.push({ type: 'keybind', keys: sa.keys });
+              break;
+            case 'app_launch':
+              if (!sa.appPath.trim()) return null;
+              actions.push({ type: 'app_launch', path: sa.appPath.trim() });
+              break;
+            case 'system_action':
+              actions.push({ type: 'system_action', action: sa.systemAction });
+              break;
+          }
+        }
+        const delays = subActions.map((sa) => sa.delay);
+        return { type: 'multi_action', actions, delays };
+      }
       default:
         return null;
     }
-  }, [actionType, selectedKeys, appPath, systemAction]);
+  }, [actionType, selectedKeys, appPath, systemAction, subActions]);
 
   const handleSave = useCallback(() => {
     if (label.length > 16) {
@@ -179,20 +273,35 @@ export function EditorScreen({
       action: builtAction,
       label: label.trim() || undefined,
       color: selectedColor,
+      customImage,
     };
 
     onSave(updated);
-  }, [button, builtAction, label, selectedColor, onSave]);
+  }, [button, builtAction, label, selectedColor, customImage, onSave]);
 
-  const handleImagePicker = useCallback(() => {
+  const handleImagePicker = useCallback(async () => {
     if (!isPro) {
       Alert.alert('Pro Feature', 'Custom button images require LuminaDeck Pro.');
       return;
     }
-    Alert.alert(
-      'Image Picker',
-      'Camera roll integration will be available in a future update.',
-    );
+    try {
+      const uri = await pickButtonImage();
+      if (uri) {
+        setCustomImage(uri);
+      } else {
+        // null means cancelled or permission denied — check which one
+        const { requestImagePermission } = await import('../lib/imagePicker');
+        const granted = await requestImagePermission();
+        if (!granted) {
+          Alert.alert(
+            'Permission Required',
+            'Please allow photo library access in Settings to choose a custom image.',
+          );
+        }
+      }
+    } catch {
+      Alert.alert('Error', 'Could not open the image picker. Please try again.');
+    }
   }, [isPro]);
 
   return (
@@ -588,17 +697,360 @@ export function EditorScreen({
 
       {actionType === 'multi_action' && (
         <View style={styles.section}>
-          <View
-            style={[styles.placeholderCard, { backgroundColor: colors.buttonBackground, borderColor: colors.buttonBorder }]}
+          <Text
+            style={[styles.sectionTitle, { color: colors.text }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
           >
+            Sub-Actions ({subActions.length}/{MAX_SUB_ACTIONS})
+          </Text>
+
+          {subActions.length === 0 && (
+            <View
+              style={[styles.placeholderCard, { backgroundColor: colors.buttonBackground, borderColor: colors.buttonBorder }]}
+            >
+              <Text
+                style={[styles.placeholderText, { color: colors.textSecondary }]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                No sub-actions yet. Tap "Add Action" to start building a chain.
+              </Text>
+            </View>
+          )}
+
+          {subActions.map((sa, index) => (
+            <View
+              key={sa.id}
+              style={[
+                styles.subActionCard,
+                {
+                  backgroundColor: colors.buttonBackground,
+                  borderColor: colors.buttonBorder,
+                },
+              ]}
+            >
+              {/* Sub-action header */}
+              <View style={styles.subActionHeader}>
+                <Text
+                  style={[styles.subActionIndex, { color: colors.accent }]}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                >
+                  #{index + 1}
+                </Text>
+                <View style={styles.subActionReorder}>
+                  <TouchableOpacity
+                    onPress={() => moveSubAction(index, 'up')}
+                    disabled={index === 0}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move action ${index + 1} up`}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ opacity: index === 0 ? 0.3 : 1 }}
+                  >
+                    <Text
+                      style={[styles.reorderArrow, { color: colors.textSecondary }]}
+                      allowFontScaling
+                      maxFontSizeMultiplier={1.5}
+                    >
+                      {'\u25B2'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => moveSubAction(index, 'down')}
+                    disabled={index === subActions.length - 1}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move action ${index + 1} down`}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ opacity: index === subActions.length - 1 ? 0.3 : 1 }}
+                  >
+                    <Text
+                      style={[styles.reorderArrow, { color: colors.textSecondary }]}
+                      allowFontScaling
+                      maxFontSizeMultiplier={1.5}
+                    >
+                      {'\u25BC'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  onPress={() => removeSubAction(sa.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove action ${index + 1}`}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text
+                    style={[styles.removeSubAction, { color: colors.statusRed }]}
+                    allowFontScaling
+                    maxFontSizeMultiplier={1.5}
+                  >
+                    {'\u00D7'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Sub-action type picker */}
+              <View style={styles.subActionTypeRow}>
+                {(['keybind', 'app_launch', 'system_action'] as const).map((t) => {
+                  const typeLabels: Record<SubActionType, string> = {
+                    keybind: 'Keybind',
+                    app_launch: 'App Launch',
+                    system_action: 'System',
+                  };
+                  const selected = sa.type === t;
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      style={[
+                        styles.subActionTypeChip,
+                        {
+                          backgroundColor: selected ? colors.accent : 'transparent',
+                          borderColor: selected ? colors.accent : colors.buttonBorder,
+                        },
+                      ]}
+                      onPress={() => updateSubAction(sa.id, { type: t, keys: [], appPath: '', systemAction: 'volume_up' })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${typeLabels[t]} type${selected ? ', selected' : ''}`}
+                      accessibilityState={{ selected }}
+                    >
+                      <Text
+                        style={[
+                          styles.subActionTypeText,
+                          { color: selected ? '#FFFFFF' : colors.text },
+                        ]}
+                        allowFontScaling
+                        maxFontSizeMultiplier={1.5}
+                      >
+                        {typeLabels[t]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Sub-action config based on type */}
+              {sa.type === 'keybind' && (
+                <View style={styles.subActionConfig}>
+                  <View style={styles.selectedKeysRow}>
+                    {sa.keys.length === 0 ? (
+                      <Text
+                        style={[styles.subActionHint, { color: colors.textSecondary }]}
+                        allowFontScaling
+                        maxFontSizeMultiplier={1.5}
+                      >
+                        Tap to select keys
+                      </Text>
+                    ) : (
+                      sa.keys.map((key, ki) => (
+                        <React.Fragment key={key}>
+                          {ki > 0 && (
+                            <Text style={[styles.plusSign, { color: colors.textSecondary }]}>+</Text>
+                          )}
+                          <TouchableOpacity
+                            style={[styles.selectedKeyChip, { backgroundColor: colors.accent }]}
+                            onPress={() =>
+                              updateSubAction(sa.id, { keys: sa.keys.filter((k) => k !== key) })
+                            }
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove ${key} from action ${index + 1}`}
+                          >
+                            <Text style={styles.selectedKeyText} allowFontScaling maxFontSizeMultiplier={1.5}>
+                              {key.toUpperCase()}
+                            </Text>
+                            <Text style={styles.removeKeyIcon} allowFontScaling maxFontSizeMultiplier={1.5}>
+                              {' \u00D7'}
+                            </Text>
+                          </TouchableOpacity>
+                        </React.Fragment>
+                      ))
+                    )}
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.subActionKeysScroll}
+                  >
+                    {KEY_CATEGORIES.flatMap((cat) => cat.keys).slice(0, 30).map((key) => {
+                      const isKeySelected = sa.keys.includes(key);
+                      return (
+                        <TouchableOpacity
+                          key={key}
+                          style={[
+                            styles.miniKeyButton,
+                            {
+                              backgroundColor: isKeySelected ? colors.accent : colors.background,
+                              borderColor: isKeySelected ? colors.accent : colors.buttonBorder,
+                            },
+                          ]}
+                          onPress={() => {
+                            if (isKeySelected) {
+                              updateSubAction(sa.id, { keys: sa.keys.filter((k) => k !== key) });
+                            } else if (sa.keys.length < 6) {
+                              updateSubAction(sa.id, { keys: [...sa.keys, key] });
+                            }
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${key} key${isKeySelected ? ', selected' : ''}`}
+                        >
+                          <Text
+                            style={[
+                              styles.miniKeyText,
+                              { color: isKeySelected ? '#FFFFFF' : colors.text },
+                            ]}
+                            allowFontScaling
+                            maxFontSizeMultiplier={1.5}
+                            numberOfLines={1}
+                          >
+                            {key.toUpperCase()}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              {sa.type === 'app_launch' && (
+                <View style={styles.subActionConfig}>
+                  <TextInput
+                    style={[
+                      styles.subActionInput,
+                      {
+                        backgroundColor: colors.background,
+                        color: colors.text,
+                        borderColor: colors.buttonBorder,
+                      },
+                    ]}
+                    value={sa.appPath}
+                    onChangeText={(text) => updateSubAction(sa.id, { appPath: text })}
+                    placeholder='C:\Program Files\App\app.exe'
+                    placeholderTextColor={colors.textSecondary + '88'}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    accessibilityLabel={`Application path for action ${index + 1}`}
+                    allowFontScaling
+                    maxFontSizeMultiplier={1.5}
+                  />
+                </View>
+              )}
+
+              {sa.type === 'system_action' && (
+                <View style={styles.subActionConfig}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.subActionKeysScroll}
+                  >
+                    {SYSTEM_ACTIONS.map(({ value, label: actionLabel }) => {
+                      const isActionSelected = sa.systemAction === value;
+                      return (
+                        <TouchableOpacity
+                          key={value}
+                          style={[
+                            styles.miniSystemChip,
+                            {
+                              backgroundColor: isActionSelected ? colors.accent : colors.background,
+                              borderColor: isActionSelected ? colors.accent : colors.buttonBorder,
+                            },
+                          ]}
+                          onPress={() => updateSubAction(sa.id, { systemAction: value })}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${actionLabel}${isActionSelected ? ', selected' : ''}`}
+                        >
+                          <Text
+                            style={[
+                              styles.miniKeyText,
+                              { color: isActionSelected ? '#FFFFFF' : colors.text },
+                            ]}
+                            allowFontScaling
+                            maxFontSizeMultiplier={1.5}
+                            numberOfLines={1}
+                          >
+                            {actionLabel}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Delay input */}
+              <View style={styles.delayRow}>
+                <Text
+                  style={[styles.delayLabel, { color: colors.textSecondary }]}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                >
+                  Delay before next:
+                </Text>
+                <TextInput
+                  style={[
+                    styles.delayInput,
+                    {
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      borderColor: colors.buttonBorder,
+                    },
+                  ]}
+                  value={sa.delay > 0 ? String(sa.delay) : ''}
+                  onChangeText={(text) => {
+                    const num = parseInt(text, 10);
+                    if (text === '') {
+                      updateSubAction(sa.id, { delay: 0 });
+                    } else if (!isNaN(num)) {
+                      updateSubAction(sa.id, { delay: Math.min(Math.max(num, 0), MAX_DELAY_MS) });
+                    }
+                  }}
+                  placeholder="0"
+                  placeholderTextColor={colors.textSecondary + '88'}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  accessibilityLabel={`Delay in milliseconds before next action`}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                />
+                <Text
+                  style={[styles.delayUnit, { color: colors.textSecondary }]}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                >
+                  ms
+                </Text>
+              </View>
+            </View>
+          ))}
+
+          {/* Add action button */}
+          {subActions.length < MAX_SUB_ACTIONS && (
+            <TouchableOpacity
+              style={[
+                styles.addSubActionButton,
+                { borderColor: colors.accent },
+              ]}
+              onPress={addSubAction}
+              accessibilityRole="button"
+              accessibilityLabel="Add sub-action"
+            >
+              <Text
+                style={[styles.addSubActionText, { color: colors.accent }]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                + Add Action
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {subActions.length >= MAX_SUB_ACTIONS && (
             <Text
-              style={[styles.placeholderText, { color: colors.textSecondary }]}
+              style={[styles.subActionLimitText, { color: colors.textSecondary }]}
               allowFontScaling
               maxFontSizeMultiplier={1.5}
             >
-              Multi-Action builder coming soon. Chain multiple keybinds, app launches, and system actions into a single button press with configurable delays.
+              Maximum of {MAX_SUB_ACTIONS} sub-actions reached.
             </Text>
-          </View>
+          )}
         </View>
       )}
 
@@ -644,32 +1096,86 @@ export function EditorScreen({
         >
           Custom Image
         </Text>
-        <TouchableOpacity
-          style={[
-            styles.imagePickerButton,
-            { borderColor: colors.buttonBorder, backgroundColor: colors.buttonBackground },
-          ]}
-          onPress={handleImagePicker}
-          accessibilityRole="button"
-          accessibilityLabel="Choose custom button image"
-        >
-          <Text
-            style={[styles.imagePickerText, { color: colors.textSecondary }]}
-            allowFontScaling
-            maxFontSizeMultiplier={1.5}
+        {customImage ? (
+          <View style={styles.imagePreviewRow}>
+            <View
+              style={[styles.imagePreviewThumb, { borderColor: colors.buttonBorder }]}
+            >
+              <Text
+                style={[styles.imagePreviewEmoji, { color: colors.accent }]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                {'\u2713'}
+              </Text>
+              <Text
+                style={[styles.imagePreviewUri, { color: colors.textSecondary }]}
+                numberOfLines={1}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                Image selected
+              </Text>
+            </View>
+            <View style={styles.imagePreviewActions}>
+              <TouchableOpacity
+                style={[styles.imageChangeButton, { borderColor: colors.accent }]}
+                onPress={handleImagePicker}
+                accessibilityRole="button"
+                accessibilityLabel="Change custom image"
+              >
+                <Text
+                  style={[styles.imageChangeText, { color: colors.accent }]}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                >
+                  Change
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.imageClearButton, { borderColor: colors.statusRed }]}
+                onPress={() => setCustomImage(undefined)}
+                accessibilityRole="button"
+                accessibilityLabel="Remove custom image"
+              >
+                <Text
+                  style={[styles.imageClearText, { color: colors.statusRed }]}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                >
+                  Remove
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.imagePickerButton,
+              { borderColor: colors.buttonBorder, backgroundColor: colors.buttonBackground },
+            ]}
+            onPress={handleImagePicker}
+            accessibilityRole="button"
+            accessibilityLabel="Choose custom button image"
           >
-            Choose from Camera Roll
-          </Text>
-          {!isPro && (
             <Text
-              style={[styles.proTag, { color: colors.accent }]}
+              style={[styles.imagePickerText, { color: colors.textSecondary }]}
               allowFontScaling
               maxFontSizeMultiplier={1.5}
             >
-              PRO
+              Choose from Camera Roll
             </Text>
-          )}
-        </TouchableOpacity>
+            {!isPro && (
+              <Text
+                style={[styles.proTag, { color: colors.accent }]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                PRO
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Action buttons */}
@@ -938,5 +1444,178 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  // --- Multi-Action Builder ---
+  subActionCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  subActionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  subActionIndex: {
+    fontSize: 14,
+    fontWeight: '800',
+    flex: 1,
+  },
+  subActionReorder: {
+    flexDirection: 'row',
+    gap: 12,
+    marginRight: 12,
+  },
+  reorderArrow: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  removeSubAction: {
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  subActionTypeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 8,
+  },
+  subActionTypeChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  subActionTypeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  subActionConfig: {
+    marginTop: 4,
+  },
+  subActionHint: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  subActionInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+  },
+  subActionKeysScroll: {
+    gap: 4,
+    paddingVertical: 4,
+  },
+  miniKeyButton: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    minWidth: 36,
+    alignItems: 'center',
+  },
+  miniKeyText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  miniSystemChip: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  delayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  delayLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  delayInput: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    fontSize: 13,
+    width: 60,
+    textAlign: 'center',
+  },
+  delayUnit: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  addSubActionButton: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  addSubActionText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  subActionLimitText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+
+  // --- Image Preview ---
+  imagePreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  imagePreviewThumb: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  imagePreviewEmoji: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  imagePreviewUri: {
+    fontSize: 13,
+    flex: 1,
+  },
+  imagePreviewActions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  imageChangeButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  imageChangeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  imageClearButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  imageClearText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

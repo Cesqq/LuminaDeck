@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import type { ButtonConfig } from '@luminadeck/shared';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
@@ -10,7 +11,10 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { EditorScreen } from './src/screens/EditorScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { loadProfile, saveProfile } from './src/lib/storage';
+
+const ONBOARDING_KEY = '@luminadeck/onboarding_complete';
 
 type TabId = 'home' | 'connect' | 'settings';
 
@@ -23,6 +27,17 @@ function AppContent() {
   const { colors } = useTheme();
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [editorState, setEditorState] = useState<EditorState | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDING_KEY).then((val) => {
+      setShowOnboarding(val !== 'true');
+    });
+  }, []);
+
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboarding(false);
+  }, []);
 
   const handleNavigateSettings = useCallback(() => {
     setActiveTab('settings');
@@ -59,6 +74,25 @@ function AppContent() {
   // Determine StatusBar style from background luminance
   const bgIsLight = isLightColor(colors.background);
   const statusBarStyle = bgIsLight ? 'dark' : 'light';
+
+  // Loading state for onboarding check
+  if (showOnboarding === null) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
+        <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
+      </SafeAreaView>
+    );
+  }
+
+  // Show onboarding on first run
+  if (showOnboarding) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
+        <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
+        <OnboardingScreen onComplete={handleOnboardingComplete} />
+      </SafeAreaView>
+    );
+  }
 
   // If editor is open, show it full-screen over everything
   if (editorState) {

@@ -6,121 +6,520 @@
   <title>LuminaDeck Companion</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0D0D0D;
+      --surface: #1A1A2E;
+      --border: #16213E;
+      --accent: #0F3460;
+      --accent-bright: #00D4FF;
+      --text: #E0E0E0;
+      --text-secondary: #888;
+      --green: #4CAF50;
+      --yellow: #FFC107;
+      --red: #F44336;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0D0D0D;
-      color: #E0E0E0;
+      background: var(--bg);
+      color: var(--text);
       display: flex;
       flex-direction: column;
       min-height: 100vh;
-      padding: 24px;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    h1 {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 8px;
+
+    /* Header */
+    .header {
+      padding: 20px 24px 12px;
     }
-    .subtitle {
-      color: #888;
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .header .subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px 0;
+      text-align: center;
       font-size: 13px;
-      margin-bottom: 32px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
     }
-    .status {
+    .tab.active {
+      color: var(--accent-bright);
+      border-bottom-color: var(--accent-bright);
+    }
+    .tab:hover:not(.active) {
+      color: var(--text);
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      padding: 20px 24px;
+      overflow-y: auto;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Status card */
+    .status-card {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      background: #1A1A2E;
-      border-radius: 8px;
-      margin-bottom: 16px;
+      gap: 10px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
     }
     .status-dot {
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-      background: #4CAF50;
+      flex-shrink: 0;
     }
-    .status-dot.waiting { background: #FFC107; }
-    .status-dot.error { background: #F44336; }
-    .section {
-      margin-bottom: 24px;
-    }
+    .status-dot.running { background: var(--green); }
+    .status-dot.waiting { background: var(--yellow); }
+    .status-dot.error { background: var(--red); }
+    .status-text { font-size: 13px; font-weight: 500; }
+    .status-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+    /* Section */
     .section-title {
-      font-size: 13px;
-      color: #888;
+      font-size: 11px;
+      color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      font-weight: 700;
     }
-    .device-list {
-      list-style: none;
+    .section { margin-bottom: 24px; }
+
+    /* QR Container */
+    .qr-container {
+      background: #FFFFFF;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 12px;
     }
+    .qr-container canvas { display: block; }
+    .qr-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* IP Info */
+    .ip-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .ip-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+    }
+    .ip-row:not(:last-child) {
+      border-bottom: 1px solid var(--border);
+    }
+    .ip-label { font-size: 12px; color: var(--text-secondary); }
+    .ip-value {
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'SF Mono', 'Consolas', monospace;
+    }
+    .copy-btn {
+      background: var(--accent);
+      border: none;
+      color: var(--text);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .copy-btn:hover { opacity: 0.8; }
+
+    /* Device list */
+    .device-list { list-style: none; }
     .device-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 12px 16px;
-      background: #1A1A2E;
-      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
       margin-bottom: 8px;
     }
-    .device-name { font-weight: 500; }
-    .device-status { font-size: 12px; color: #888; }
+    .device-info { flex: 1; }
+    .device-name { font-size: 14px; font-weight: 600; }
+    .device-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .device-remove {
+      background: none;
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .device-remove:hover { background: rgba(244, 67, 54, 0.15); }
+
     .empty-state {
       text-align: center;
-      padding: 40px 16px;
-      color: #666;
+      padding: 32px 16px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.5;
     }
-    .port-info {
-      font-size: 12px;
-      color: #666;
-      margin-top: auto;
-      padding-top: 24px;
+
+    /* Settings items */
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-label { font-size: 13px; }
+    .setting-value { font-size: 13px; color: var(--text-secondary); font-family: monospace; }
+
+    /* Footer */
+    .footer {
+      padding: 12px 24px;
       text-align: center;
+      font-size: 10px;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border);
     }
   </style>
+  <!-- QR Code library - small, no external deps -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body>
-  <h1>LuminaDeck Companion</h1>
-  <p class="subtitle">Waiting for iPhone connection...</p>
-
-  <div class="status">
-    <div class="status-dot waiting"></div>
-    <span id="server-status">Server starting...</span>
+  <div class="header">
+    <h1>LuminaDeck Companion</h1>
+    <p class="subtitle" id="header-subtitle">Starting...</p>
   </div>
 
-  <div class="section">
-    <div class="section-title">Paired Devices</div>
-    <div id="device-list" class="empty-state">
-      No devices paired yet.<br/>
-      Scan the QR code from your iPhone to connect.
+  <div class="tabs">
+    <div class="tab active" data-tab="status">Status</div>
+    <div class="tab" data-tab="pair">Pair</div>
+    <div class="tab" data-tab="devices">Devices</div>
+    <div class="tab" data-tab="settings">Settings</div>
+  </div>
+
+  <div class="content">
+    <!-- Status Panel -->
+    <div class="panel active" id="panel-status">
+      <div class="status-card">
+        <div class="status-dot waiting" id="status-dot"></div>
+        <div>
+          <div class="status-text" id="status-text">Initializing...</div>
+          <div class="status-sub" id="status-sub">Preparing server</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Connection Info</div>
+        <div class="ip-card">
+          <div class="ip-row">
+            <span class="ip-label">Local IP</span>
+            <span>
+              <span class="ip-value" id="local-ip">—</span>
+              <button class="copy-btn" onclick="copyText('local-ip')">Copy</button>
+            </span>
+          </div>
+          <div class="ip-row">
+            <span class="ip-label">Port</span>
+            <span class="ip-value" id="local-port">9876</span>
+          </div>
+          <div class="ip-row">
+            <span class="ip-label">Connected</span>
+            <span class="ip-value" id="connected-count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Certificate</div>
+        <div class="ip-card">
+          <div class="ip-row">
+            <span class="ip-label">Fingerprint (SHA-256)</span>
+          </div>
+          <div class="ip-row">
+            <span class="ip-value" id="cert-fingerprint" style="font-size: 11px; word-break: break-all;">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pair Panel -->
+    <div class="panel" id="panel-pair">
+      <div class="section">
+        <div class="section-title">Scan QR Code</div>
+        <div class="qr-container" id="qr-container">
+          <div style="color: #333; font-size: 13px;">Loading...</div>
+        </div>
+        <p class="qr-hint">
+          Open LuminaDeck on your iPhone, go to <strong>Connect</strong>,
+          and tap <strong>Scan QR Code</strong>
+        </p>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Or Enter Manually</div>
+        <div class="ip-card">
+          <div class="ip-row">
+            <span class="ip-label">IP Address</span>
+            <span>
+              <span class="ip-value" id="manual-ip">—</span>
+              <button class="copy-btn" onclick="copyText('manual-ip')">Copy</button>
+            </span>
+          </div>
+          <div class="ip-row">
+            <span class="ip-label">Port</span>
+            <span class="ip-value">9876</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Devices Panel -->
+    <div class="panel" id="panel-devices">
+      <div class="section">
+        <div class="section-title">Paired Devices</div>
+        <div id="device-list">
+          <div class="empty-state">
+            No devices paired yet.<br/>
+            Go to the <strong>Pair</strong> tab to connect your iPhone.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="panel" id="panel-settings">
+      <div class="section">
+        <div class="section-title">Server</div>
+        <div class="setting-item">
+          <span class="setting-label">Port</span>
+          <span class="setting-value">9876</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-label">TLS</span>
+          <span class="setting-value">1.3 (self-signed)</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-label">Max Devices</span>
+          <span class="setting-value">5</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-label">Rate Limit</span>
+          <span class="setting-value">50 actions/sec</span>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">About</div>
+        <div class="setting-item">
+          <span class="setting-label">App</span>
+          <span class="setting-value">LuminaDeck Companion</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-label">Version</span>
+          <span class="setting-value">0.1.0</span>
+        </div>
+        <div class="setting-item">
+          <span class="setting-label">Protocol</span>
+          <span class="setting-value">1.0.0</span>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="port-info">
-    Listening on port <strong>9876</strong> (TLS)
+  <div class="footer">
+    LuminaDeck Companion v0.1.0 &mdash; Listening on port 9876 (TLS 1.3)
   </div>
 
   <script type="module">
     const { invoke } = window.__TAURI__.core;
 
-    async function updateStatus() {
+    // --- Tab switching ---
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // --- Copy to clipboard ---
+    window.copyText = function(elementId) {
+      const text = document.getElementById(elementId)?.textContent;
+      if (text && text !== '—') {
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = event.target;
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+        });
+      }
+    };
+
+    // --- Refresh server info ---
+    async function refreshInfo() {
       try {
-        const status = await invoke('get_server_status');
-        const el = document.getElementById('server-status');
-        const dot = document.querySelector('.status-dot');
-        if (status === 'running') {
-          el.textContent = 'Server running — ready for connections';
-          dot.className = 'status-dot';
+        const info = await invoke('get_server_info');
+
+        // Status
+        const dot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const statusSub = document.getElementById('status-sub');
+        const subtitle = document.getElementById('header-subtitle');
+
+        if (info.status === 'running') {
+          dot.className = 'status-dot running';
+          statusText.textContent = 'Server running';
+          statusSub.textContent = `Listening on ${info.ip}:${info.port}`;
+          subtitle.textContent = info.connected_devices > 0
+            ? `${info.connected_devices} device(s) connected`
+            : 'Waiting for iPhone connection...';
+        }
+
+        // Connection info
+        document.getElementById('local-ip').textContent = info.ip;
+        document.getElementById('local-port').textContent = String(info.port);
+        document.getElementById('connected-count').textContent = String(info.connected_devices);
+        document.getElementById('manual-ip').textContent = info.ip;
+
+        // Cert fingerprint
+        if (info.cert_fingerprint) {
+          document.getElementById('cert-fingerprint').textContent = info.cert_fingerprint;
         }
       } catch (e) {
-        console.error('Status check failed:', e);
+        console.error('Failed to get server info:', e);
       }
     }
 
-    // Poll status
-    updateStatus();
-    setInterval(updateStatus, 5000);
+    // --- Generate QR code ---
+    async function generateQR() {
+      try {
+        const data = await invoke('get_qr_pairing_data');
+        const container = document.getElementById('qr-container');
+        container.innerHTML = '';
+
+        // Generate QR code
+        const qr = qrcode(0, 'M');
+        qr.addData(data.json);
+        qr.make();
+
+        // Render to canvas
+        const size = 200;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const moduleCount = qr.getModuleCount();
+        const cellSize = size / moduleCount;
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, size, size);
+
+        ctx.fillStyle = '#000000';
+        for (let row = 0; row < moduleCount; row++) {
+          for (let col = 0; col < moduleCount; col++) {
+            if (qr.isDark(row, col)) {
+              ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+            }
+          }
+        }
+
+        container.appendChild(canvas);
+      } catch (e) {
+        console.error('QR generation failed:', e);
+        document.getElementById('qr-container').innerHTML =
+          '<div style="color: #333; font-size: 13px;">Failed to generate QR code</div>';
+      }
+    }
+
+    // --- Refresh device list ---
+    async function refreshDevices() {
+      try {
+        const devices = await invoke('get_paired_devices');
+        const container = document.getElementById('device-list');
+
+        if (devices.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              No devices paired yet.<br/>
+              Go to the <strong>Pair</strong> tab to connect your iPhone.
+            </div>`;
+          return;
+        }
+
+        container.innerHTML = devices.map(d => `
+          <div class="device-item">
+            <div class="device-info">
+              <div class="device-name">${escapeHtml(d.name)}</div>
+              <div class="device-meta">Paired: ${d.paired_at}${d.last_seen ? ' &bull; Last seen: ' + d.last_seen : ''}</div>
+            </div>
+            <button class="device-remove" onclick="removeDevice('${escapeHtml(d.id)}')">Remove</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Failed to load devices:', e);
+      }
+    }
+
+    window.removeDevice = async function(deviceId) {
+      try {
+        await invoke('remove_paired_device', { deviceId });
+        refreshDevices();
+      } catch (e) {
+        console.error('Failed to remove device:', e);
+      }
+    };
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // --- Initialize ---
+    refreshInfo();
+    generateQR();
+    refreshDevices();
+
+    // Poll for updates
+    setInterval(refreshInfo, 3000);
+    setInterval(refreshDevices, 10000);
   </script>
 </body>
 </html>
