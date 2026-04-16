@@ -1,134 +1,99 @@
-# LuminaDeck - Setup Checklist & Credentials
+# LuminaDeck - Setup Checklist
 
-Fill in each section as you complete it. Once done, hand this back and we start building.
+## Developer Environment
 
----
+- [x] Node.js 20+ installed
+- [x] pnpm 9+ installed
+- [x] Rust toolchain installed (rustup)
+- [x] `pnpm install` — all JS deps resolved
+- [x] `cargo check` — companion Rust compiles clean
+- [x] `tsc --noEmit` — shared + mobile TypeScript clean
 
-## PRIORITY 1: DO NOW (Blockers)
+## Apple Developer Account
 
-### Apple Developer Program
-- [ ] Enrolled at developer.apple.com/programs ($99/yr)
-- Status: _______________  (pending / approved / rejected)
-- Apple Team ID: _______________
-- Bundle ID chosen: com.luminadeck._______________  (e.g., "app")
-- Apple ID email used: _______________
+- [ ] Apple Developer Program enrollment ($99/yr)
+- [ ] Create App ID: `com.luminadeck.app`
+- [ ] Create App Store Connect entry
+- [ ] Configure In-App Purchase product (non-consumable, $9.99)
+- [ ] Generate provisioning profiles for development + distribution
 
-### Mac Access
-- [ ] Secured Mac access for Xcode / iOS builds
-- Method: _______________  (own Mac / Mac Mini / MacStadium cloud / other)
-- macOS version: _______________
-- Xcode installed: [ ] yes  [ ] no
+## EAS Build Setup
 
-### EV Code Signing Certificate (Windows)
-- [ ] Ordered from: _______________  (DigiCert / Sectigo / GlobalSign / other)
-- Order date: _______________
-- Estimated delivery: _______________
-- Received: [ ] yes  [ ] no
+- [ ] Install EAS CLI: `npm install -g eas-cli`
+- [ ] Run `eas login` with Expo account
+- [ ] Run `eas build:configure` in `apps/mobile/`
+- [ ] Replace `PLACEHOLDER` in `eas.json` with real Apple IDs
+- [ ] Replace `PLACEHOLDER` in `app.json` `extra.eas.projectId`
+- [ ] Test development build: `eas build --platform ios --profile development`
 
----
+## RevenueCat IAP
 
-## PRIORITY 2: THIS WEEK (Quick Setups)
+- [ ] Create RevenueCat account (https://www.revenuecat.com/)
+- [ ] Create project "LuminaDeck"
+- [ ] Add iOS app with bundle ID `com.luminadeck.app`
+- [ ] Add App Store Connect API key to RevenueCat
+- [ ] Create product "luminadeck_pro" (non-consumable, $9.99)
+- [ ] Create entitlement "pro" linked to the product
+- [ ] Create offering "default" with the pro package
+- [ ] Copy iOS API key to `.env` as `EXPO_PUBLIC_REVENUECAT_IOS_KEY`
 
-### Supabase
-- [ ] Project created at supabase.com
-- Project name: _______________
-- Region: _______________
-- SUPABASE_URL: _______________
-- SUPABASE_ANON_KEY: _______________
-- SUPABASE_SERVICE_ROLE_KEY: _______________
+## Supabase (Optional — app works without it)
 
-### Expo / EAS
-- [ ] Account created at expo.dev
-- Username: _______________
-- EXPO_ACCESS_TOKEN: _______________
+- [ ] Create Supabase project
+- [ ] Run `supabase/migrations/001_luminadeck_schema.sql`
+- [ ] Deploy edge function: `supabase functions deploy luminadeck-validate-receipt`
+- [ ] Copy URL + anon key to `.env`
 
-### Node.js
-- [ ] Installed on Windows
-- Version: _______________  (need v20+)
-- Verify: run `node --version` in terminal
+## Windows Companion
 
-### Rust Toolchain (for Tauri evaluation)
-- [ ] Installed via rustup.rs
-- Version: _______________
-- Verify: run `rustc --version` in terminal
+- [ ] Procure EV code-signing certificate (DigiCert / Sectigo / GlobalSign)
+- [ ] Run `cargo build --release` in `apps/companion/src-tauri`
+- [ ] Run `pnpm tauri:build` for installer (.exe/.msi)
+- [ ] Verify server starts on port 9876 (TLS)
+- [ ] Verify system tray icon appears
+- [ ] Test QR code display in Pair tab
 
----
+## Environment Variables
 
-## PRIORITY 3: CAN WAIT (Phase 4+)
+Create `.env` in repo root (gitignored):
+```
+EXPO_PUBLIC_REVENUECAT_IOS_KEY=
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+```
 
-### Stripe
-- [ ] Account created at stripe.com
-- STRIPE_PUBLISHABLE_KEY: _______________
-- STRIPE_SECRET_KEY: _______________
+## Build Status
 
-### Snyk (optional)
-- [ ] Account created at snyk.io
-- SNYK_TOKEN: _______________
+### Phase 0 (Complete)
+- [x] Monorepo scaffolded (pnpm + Turborepo)
+- [x] Shared types package (protocol, keys, validation)
+- [x] Companion Rust backend (TLS WS, SendInput, mDNS, pairing)
+- [x] Mobile screens (Home, Connect, Settings, Editor)
+- [x] Supabase migration + edge function
 
----
+### Phase 1+2 (Complete)
+- [x] Companion Tauri commands (QR, pairing, device CRUD)
+- [x] Rate limiter (50 actions/sec per peer)
+- [x] Companion frontend (Status/Pair/Devices/Settings tabs, QR display)
+- [x] System tray icon
+- [x] First-run onboarding (3-step walkthrough)
+- [x] QR scanner modal (expo-camera)
+- [x] Multi-action builder in editor
+- [x] Image picker (expo-image-picker, Pro-gated)
+- [x] Profile import/export (expo-file-system + sharing)
 
-## HARDWARE CHECKLIST
+### Phase 3+4 (In Progress)
+- [x] RevenueCat IAP integration
+- [x] Restore purchase flow
+- [x] EAS Build config (eas.json)
+- [x] iOS Privacy Manifest
+- [ ] Icon pack SVGs (80 icons, 5 theme variants)
+- [ ] VoiceOver accessibility audit
+- [ ] App icon + splash screen design
+- [ ] TestFlight beta
 
-### Development Machine (Windows)
-- [ ] Windows 10 21H2+ or Windows 11
-- OS version: _______________
-- Node.js: [ ] installed
-- Git: [ ] installed
-- Cursor: [ ] installed
-
-### Mac (for iOS builds)
-- [ ] Available
-- Model: _______________
-- macOS version: _______________
-- Xcode: [ ] installed
-- CocoaPods: [ ] installed  (run: sudo gem install cocoapods)
-
-### iPhone (for testing)
-- [ ] Available
-- Model: _______________  (iPhone 12 or newer)
-- iOS version: _______________  (need iOS 16+)
-
----
-
-## EXISTING TOOLS (confirm access)
-
-- [ ] Claude Max (20x) -- you're using it now
-- [ ] Cursor -- IDE
-- [ ] ChatGPT Pro / Codex
-- [ ] Canva
-- [ ] KlingAI
-- [ ] ElevenLabs
-- [ ] Lovable
-- [ ] Antigravity
-
----
-
-## DECISIONS NEEDED BEFORE WEEK 1
-
-1. **Bundle ID**: What do you want after "com.luminadeck."?
-   - Suggestion: `com.luminadeck.app`
-   - Your choice: _______________
-
-2. **App Display Name on App Store**: 
-   - "LuminaDeck" or something else?
-   - Your choice: _______________
-
-3. **Landing page domain**: Do you own a domain? 
-   - Domain: _______________
-   - If not, suggestions: luminadeck.app / luminadeck.io / getluminadeck.com
-
-4. **GitHub repo visibility**: 
-   - [ ] Private (recommended)
-   - [ ] Public / open-source
-
----
-
-## DO NOT SHARE THESE WITH ANYONE
-
-Once filled in, keep this file LOCAL ONLY. When you're ready, paste the
-keys into the .env file I'll set up -- never commit this document or the
-.env file to git.
-
----
-
-**When you've completed Priority 1 and 2, let me know and we start Phase 0.**
+### Phase 5+ (Not Started)
+- [ ] Security hardening audit
+- [ ] Unit + integration tests
+- [ ] Device testing matrix
+- [ ] App Store submission

@@ -29,6 +29,7 @@
     "react-native-gesture-handler": "^2.24.0",
     "react-native-reanimated": "^3.17.0",
     "react-native-zeroconf": "^0.13.0",
+    "react-native-purchases": "^8.0.0",
     "@react-native-async-storage/async-storage": "^2.1.0",
     "@luminadeck/shared": "workspace:*"
   },

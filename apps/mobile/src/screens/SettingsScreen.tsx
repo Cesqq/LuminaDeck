@@ -39,7 +39,7 @@ interface SettingsScreenProps {
 export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { themeId, colors, setTheme } = useTheme();
   const { status } = useConnection();
-  const { isPro } = usePro();
+  const { isPro, priceString, isPurchasing, isRestoring, purchase, restore } = usePro();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
@@ -317,19 +317,35 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
               Unlock all 5 themes, up to 30 buttons per page, 20 pages, multi-action buttons, custom images, and more.
             </Text>
             <TouchableOpacity
-              style={[styles.proButton, { backgroundColor: colors.accent }]}
-              onPress={() => {
-                // IAP will be integrated here
-              }}
+              style={[styles.proButton, { backgroundColor: colors.accent, opacity: isPurchasing ? 0.6 : 1 }]}
+              onPress={purchase}
+              disabled={isPurchasing}
               accessibilityRole="button"
-              accessibilityLabel="Upgrade to Pro for $9.99"
+              accessibilityLabel={`Upgrade to Pro for ${priceString}`}
+              accessibilityState={{ disabled: isPurchasing }}
             >
               <Text
                 style={styles.proButtonText}
                 allowFontScaling
                 maxFontSizeMultiplier={1.5}
               >
-                $9.99 \u2014 Unlock Pro
+                {isPurchasing ? 'Processing...' : `${priceString} \u2014 Unlock Pro`}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.restoreButton]}
+              onPress={restore}
+              disabled={isRestoring}
+              accessibilityRole="button"
+              accessibilityLabel="Restore previous purchase"
+              accessibilityState={{ disabled: isRestoring }}
+            >
+              <Text
+                style={[styles.restoreText, { color: colors.accent, opacity: isRestoring ? 0.5 : 1 }]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                {isRestoring ? 'Restoring...' : 'Restore Purchase'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -601,6 +617,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  restoreButton: {
+    marginTop: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  restoreText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   infoCard: {
     borderWidth: 1,
