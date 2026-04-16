@@ -47,12 +47,5 @@
       }
     }
   },
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://luminadeck.app/api/updates/{{target}}/{{arch}}/{{current_version}}"
-      ],
-      "pubkey": "PLACEHOLDER_UPDATER_PUBKEY"
-    }
-  }
+  "plugins": {}
 }

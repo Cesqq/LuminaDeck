@@ -46,12 +46,16 @@
 
 ## Windows Companion
 
-- [ ] Procure EV code-signing certificate (DigiCert / Sectigo / GlobalSign)
-- [ ] Run `cargo build --release` in `apps/companion/src-tauri`
-- [ ] Run `pnpm tauri:build` for installer (.exe/.msi)
+- [ ] Register Microsoft Partner Center account ($19 one-time) at https://partner.microsoft.com
+- [ ] Reserve app name "LuminaDeck Companion" in Partner Center
+- [x] Run `cargo build --release` — verified, 15MB binary
+- [ ] Run `pnpm tauri:build` for NSIS installer
+- [ ] Convert installer to MSIX using MSIX Packaging Tool
+- [ ] Submit to Microsoft Store (see docs/MICROSOFT-STORE-GUIDE.md)
 - [ ] Verify server starts on port 9876 (TLS)
-- [ ] Verify system tray icon appears
+- [ ] Verify system tray icon + context menu
 - [ ] Test QR code display in Pair tab
+- [ ] (Optional) Standard OV code-signing cert (~$65/yr from Certum) for direct download
 
 ## Environment Variables
 
