@@ -317,7 +317,9 @@ pub fn run() {
                 }
             });
 
+            let local_ip = get_local_ip();
             log::info!("LuminaDeck Companion started");
+            log::info!("Local IP: {} | Port: 9876 | Connect from iPhone: wss://{}:9876", local_ip, local_ip);
             Ok(())
         })
         .run(tauri::generate_context!())
