@@ -67,6 +67,8 @@ export class LuminaDeckClient {
     this.send(action);
   }
 
+  private connectTimeout: ReturnType<typeof setTimeout> | null = null;
+
   private doConnect(): void {
     this.cleanup();
     this.setStatus('connecting');
@@ -74,7 +76,22 @@ export class LuminaDeckClient {
     try {
       this.ws = new WebSocket(this.url);
 
+      // Timeout: if not connected within 8 seconds, give up this attempt
+      this.connectTimeout = setTimeout(() => {
+        if (this._status === 'connecting') {
+          this.ws?.close();
+          this.setStatus('error');
+          if (this.shouldReconnect) {
+            this.scheduleReconnect();
+          }
+        }
+      }, 8000);
+
       this.ws.onopen = () => {
+        if (this.connectTimeout) {
+          clearTimeout(this.connectTimeout);
+          this.connectTimeout = null;
+        }
         this.reconnectAttempt = 0;
         this.missedHeartbeats = 0;
         this.setStatus('connected');
@@ -94,6 +111,10 @@ export class LuminaDeckClient {
       };
 
       this.ws.onclose = () => {
+        if (this.connectTimeout) {
+          clearTimeout(this.connectTimeout);
+          this.connectTimeout = null;
+        }
         this.stopHeartbeat();
         if (this.shouldReconnect) {
           this.setStatus('connecting');
@@ -104,6 +125,10 @@ export class LuminaDeckClient {
       };
 
       this.ws.onerror = () => {
+        if (this.connectTimeout) {
+          clearTimeout(this.connectTimeout);
+          this.connectTimeout = null;
+        }
         this.setStatus('error');
       };
     } catch {
@@ -134,7 +159,15 @@ export class LuminaDeckClient {
     }
   }
 
+  private static readonly MAX_RECONNECT_ATTEMPTS = 5;
+
   private scheduleReconnect(): void {
+    if (this.reconnectAttempt >= LuminaDeckClient.MAX_RECONNECT_ATTEMPTS) {
+      this.shouldReconnect = false;
+      this.setStatus('error');
+      return;
+    }
+
     const delayIndex = Math.min(this.reconnectAttempt, RECONNECT_DELAYS_MS.length - 1);
     const delay = Math.min(RECONNECT_DELAYS_MS[delayIndex], RECONNECT_MAX_DELAY_MS);
 
@@ -146,6 +179,10 @@ export class LuminaDeckClient {
 
   private cleanup(): void {
     this.stopHeartbeat();
+    if (this.connectTimeout) {
+      clearTimeout(this.connectTimeout);
+      this.connectTimeout = null;
+    }
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
