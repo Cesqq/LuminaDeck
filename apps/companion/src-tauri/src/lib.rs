@@ -78,7 +78,8 @@ fn get_qr_pairing_data(state: tauri::State<'_, AppState>) -> Result<QrData, Stri
     }
 
     let ip = get_local_ip();
-    let payload = QrPairingPayload::new(ip, 9876, fingerprint);
+    // Use plain WS port for mobile (iOS rejects self-signed TLS certs)
+    let payload = QrPairingPayload::new(ip, 9877, fingerprint);
     let json = payload.to_qr_string();
 
     Ok(QrData { json, payload })

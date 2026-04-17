@@ -43,8 +43,9 @@ export class LuminaDeckClient {
     };
   }
 
-  connect(ip: string, port: number): void {
-    this.url = `wss://${ip}:${port}`;
+  connect(ip: string, port: number, useTLS: boolean = false): void {
+    const protocol = useTLS ? 'wss' : 'ws';
+    this.url = `${protocol}://${ip}:${port}`;
     this.shouldReconnect = true;
     this.reconnectAttempt = 0;
     this.doConnect();

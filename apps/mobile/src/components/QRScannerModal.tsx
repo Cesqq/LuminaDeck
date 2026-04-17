@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { BarcodeScanningResult } from 'expo-camera';
@@ -133,17 +135,17 @@ export function QRScannerModal({ visible, onScan, onClose }: QRScannerModalProps
       accessibilityViewIsModal
     >
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Close button */}
-        <View style={styles.topBar}>
+        {/* Close button — always visible, safe area aware */}
+        <View style={[styles.topBar, { paddingTop: Platform.OS === 'ios' ? 56 : (StatusBar.currentHeight ?? 24) + 12 }]}>
           <TouchableOpacity
             onPress={onClose}
-            style={styles.closeButton}
+            style={[styles.closeButton, { backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20 }]}
             accessibilityRole="button"
             accessibilityLabel="Close QR scanner"
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           >
             <Text
-              style={[styles.closeButtonText, { color: colors.text }]}
+              style={[styles.closeButtonText, { color: '#FFFFFF' }]}
               allowFontScaling
               maxFontSizeMultiplier={1.5}
             >
@@ -152,7 +154,7 @@ export function QRScannerModal({ visible, onScan, onClose }: QRScannerModalProps
           </TouchableOpacity>
 
           <Text
-            style={[styles.headerTitle, { color: colors.text }]}
+            style={[styles.headerTitle, { color: '#FFFFFF' }]}
             allowFontScaling
             maxFontSizeMultiplier={1.5}
             accessibilityRole="header"
@@ -332,13 +334,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 8,
-    zIndex: 10,
+    zIndex: 100,
+    elevation: 100,
   },
   closeButton: {
     width: 40,

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 /// QR code payload for device pairing.
 /// Phone scans this to get companion IP, port, and cert fingerprint.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct QrPairingPayload {
     pub ip: String,
     pub port: u16,

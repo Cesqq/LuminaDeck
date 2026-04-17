@@ -13,6 +13,7 @@ use tokio_tungstenite::tungstenite::Message;
 use futures_util::{SinkExt, StreamExt};
 
 const DEFAULT_PORT: u16 = 9876;
+const PLAIN_WS_PORT: u16 = 9877;
 const RATE_LIMIT_WINDOW_MS: u128 = 1000;
 const RATE_LIMIT_MAX_ACTIONS: u32 = 50;
 
@@ -129,10 +130,84 @@ pub async fn start_server(
     let rate_limiter = Arc::new(RateLimiter::new());
     let stats = Arc::new(ConnectionStats::new());
 
-    // Bind listener
+    // Bind TLS listener
     let addr = SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT));
     let listener = TcpListener::bind(&addr).await?;
     log::info!("WebSocket server listening on wss://0.0.0.0:{}", DEFAULT_PORT);
+
+    // Also bind a plain WS listener for local network (iOS doesn't trust self-signed certs)
+    let plain_addr = SocketAddr::from(([0, 0, 0, 0], PLAIN_WS_PORT));
+    let plain_listener = TcpListener::bind(&plain_addr).await?;
+    log::info!("Plain WebSocket server listening on ws://0.0.0.0:{}", PLAIN_WS_PORT);
+
+    // Spawn plain WS acceptor
+    {
+        let limiter = rate_limiter.clone();
+        let conn_stats = stats.clone();
+        let handle = app_handle.clone();
+        tokio::spawn(async move {
+            loop {
+                match plain_listener.accept().await {
+                    Ok((stream, peer_addr)) => {
+                        let limiter = limiter.clone();
+                        let conn_stats = conn_stats.clone();
+                        let handle = handle.clone();
+                        tokio::spawn(async move {
+                            let active = conn_stats.active_connections.fetch_add(1, Ordering::Relaxed) + 1;
+                            conn_stats.total_connections.fetch_add(1, Ordering::Relaxed);
+                            log::info!("Plain WS connection from {} (active: {})", peer_addr, active);
+
+                            let _ = handle.emit("connection-change", ConnectionEvent {
+                                event_type: "connected".to_string(),
+                                peer: peer_addr.to_string(),
+                                active_count: active,
+                            });
+
+                            match tokio_tungstenite::accept_async(stream).await {
+                                Ok(ws_stream) => {
+                                    let (mut write, mut read) = ws_stream.split();
+                                    while let Some(msg) = read.next().await {
+                                        match msg {
+                                            Ok(Message::Text(text)) => {
+                                                let response = handle_message(&text, peer_addr, &limiter, &conn_stats).await;
+                                                if write.send(Message::Text(response.into())).await.is_err() {
+                                                    break;
+                                                }
+                                            }
+                                            Ok(Message::Ping(data)) => {
+                                                if write.send(Message::Pong(data)).await.is_err() {
+                                                    break;
+                                                }
+                                            }
+                                            Ok(Message::Close(_)) => break,
+                                            Err(_) => break,
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    log::warn!("Plain WS handshake failed from {}: {}", peer_addr, e);
+                                }
+                            }
+
+                            limiter.remove_peer(&peer_addr);
+                            let active = conn_stats.active_connections.fetch_sub(1, Ordering::Relaxed) - 1;
+                            log::info!("Disconnected {} (active: {})", peer_addr, active);
+
+                            let _ = handle.emit("connection-change", ConnectionEvent {
+                                event_type: "disconnected".to_string(),
+                                peer: peer_addr.to_string(),
+                                active_count: active,
+                            });
+                        });
+                    }
+                    Err(e) => {
+                        log::error!("Plain WS accept error: {}", e);
+                    }
+                }
+            }
+        });
+    }
 
     loop {
         let (stream, peer_addr) = listener.accept().await?;
