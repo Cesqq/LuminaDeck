@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.luminadeck.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "LuminaDeck discovers and connects to the LuminaDeck Companion app on your PC over your local WiFi network to send button commands.",
         "NSBonjourServices": [
