@@ -19,6 +19,7 @@
     "typescript": "^5.8.0"
   },
   "dependencies": {
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "sharp": "^0.34.5"
   }
 }
