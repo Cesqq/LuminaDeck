@@ -31,9 +31,10 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "ceasaresquivel05@gmail.com",
-        "ascAppId": "PLACEHOLDER_ASC_APP_ID",
-        "appleTeamId": "7A2K2PDKW4"
+        "ascAppId": "6762442797",
+        "ascApiKeyId": "5G4BLJ82KH",
+        "ascApiKeyIssuerId": "b9dc67a7-763a-4031-aa71-ada7964eddd5",
+        "ascApiKeyPath": "../../.keys/AuthKey_5G4BLJ82KH.p8"
       }
     }
   }
