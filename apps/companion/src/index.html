@@ -232,6 +232,7 @@
     <div class="tab active" data-tab="status">Status</div>
     <div class="tab" data-tab="pair">Pair</div>
     <div class="tab" data-tab="devices">Devices</div>
+    <div class="tab" data-tab="plugins">Plugins</div>
     <div class="tab" data-tab="settings">Settings</div>
   </div>
 
@@ -314,12 +315,49 @@
     <!-- Devices Panel -->
     <div class="panel" id="panel-devices">
       <div class="section">
+        <div class="section-title">Connected Devices</div>
+        <div id="connected-devices-list">
+          <div class="empty-state">No devices connected right now.</div>
+        </div>
+      </div>
+      <div class="section">
         <div class="section-title">Paired Devices</div>
         <div id="device-list">
           <div class="empty-state">
             No devices paired yet.<br/>
             Go to the <strong>Pair</strong> tab to connect your iPhone.
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plugins Panel -->
+    <div class="panel" id="panel-plugins">
+      <div class="section">
+        <div class="section-title">Integrations</div>
+        <div class="setting-item">
+          <div>
+            <span class="setting-label">OBS Studio</span>
+            <div style="font-size: 11px; color: var(--text-secondary);">Scene switching, recording, streaming</div>
+          </div>
+          <span id="obs-status" style="font-size: 11px; font-weight: 700; color: var(--status-red);">Not Connected</span>
+        </div>
+        <div class="setting-item">
+          <div>
+            <span class="setting-label">Discord</span>
+            <div style="font-size: 11px; color: var(--text-secondary);">Mute, deafen via hotkeys (Ctrl+Shift+M/D)</div>
+          </div>
+          <span style="font-size: 11px; font-weight: 700; color: var(--status-green);">Available</span>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Window Monitor</div>
+        <div class="setting-item">
+          <span class="setting-label">Active Window</span>
+          <span id="active-window" class="setting-value" style="font-size: 11px;">—</span>
+        </div>
+        <div style="font-size: 11px; color: var(--text-secondary); padding: 8px 0;">
+          Tracks the foreground window for auto-profile switching. The active process name is sent to connected phones every 2 seconds.
         </div>
       </div>
     </div>
@@ -513,24 +551,70 @@
       return div.innerHTML;
     }
 
+    // --- Connected devices tracking ---
+    const connectedDevices = new Map(); // peer -> { name, id, protocol }
+
+    function renderConnectedDevices() {
+      const container = document.getElementById('connected-devices-list');
+      if (connectedDevices.size === 0) {
+        container.innerHTML = '<div class="empty-state">No devices connected right now.</div>';
+        return;
+      }
+      container.innerHTML = '';
+      for (const [peer, info] of connectedDevices) {
+        const card = document.createElement('div');
+        card.className = 'setting-item';
+        card.innerHTML = `
+          <div>
+            <strong style="color: var(--text)">${escapeHtml(info.name)}</strong>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
+              ${escapeHtml(peer)} &middot; Protocol v${escapeHtml(info.protocol)}
+            </div>
+          </div>
+          <span style="color: var(--accent); font-size: 11px; font-weight: 700;">CONNECTED</span>
+        `;
+        container.appendChild(card);
+      }
+    }
+
+    // --- Listen for device identification ---
+    listen('device-identified', (event) => {
+      const { device_name, device_id, peer, protocol_version } = event.payload;
+      console.log(`[Event] Device identified: ${device_name} (${peer})`);
+      connectedDevices.set(peer, { name: device_name, id: device_id, protocol: protocol_version });
+      renderConnectedDevices();
+    });
+
     // --- Listen for real-time connection events ---
     listen('connection-change', (event) => {
       const { event_type, peer, active_count } = event.payload;
       console.log(`[Event] ${event_type}: ${peer} (active: ${active_count})`);
 
+      if (event_type === 'disconnected') {
+        connectedDevices.delete(peer);
+        renderConnectedDevices();
+      }
+
       // Update connected count immediately
-      document.getElementById('connected-count').textContent = String(active_count);
+      const countEl = document.getElementById('connected-count');
+      if (countEl) countEl.textContent = String(active_count);
 
       // Update header subtitle
       const subtitle = document.getElementById('header-subtitle');
       if (active_count > 0) {
         subtitle.textContent = `${active_count} device(s) connected`;
       } else {
-        subtitle.textContent = 'Waiting for iPhone connection...';
+        subtitle.textContent = 'Waiting for connection...';
       }
 
-      // Refresh full info for any other fields
       refreshInfo();
+    });
+
+    // --- Listen for active window changes ---
+    listen('active-window-change', (event) => {
+      const { process_name, window_title } = event.payload;
+      const el = document.getElementById('active-window');
+      if (el) el.textContent = process_name || '—';
     });
 
     // --- Initialize ---

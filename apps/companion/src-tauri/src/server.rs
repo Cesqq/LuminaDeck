@@ -52,6 +52,18 @@ pub struct StatsSnapshot {
     pub total_actions_rejected: u64,
 }
 
+/// Emitted when a device identifies via hello or pair_request.
+#[derive(Clone, Serialize)]
+struct DeviceIdentifiedEvent {
+    device_name: String,
+    device_id: String,
+    peer: String,
+    protocol_version: String,
+}
+
+/// Global app handle for emitting events from handle_message.
+static APP_HANDLE: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
+
 /// Per-peer rate limiter.
 struct RateLimiter {
     peers: Mutex<HashMap<SocketAddr, PeerRate>>,
@@ -129,6 +141,9 @@ pub async fn start_server(
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(config));
     let rate_limiter = Arc::new(RateLimiter::new());
     let stats = Arc::new(ConnectionStats::new());
+
+    // Store app handle for device events
+    let _ = APP_HANDLE.set(app_handle.clone());
 
     // Bind TLS listener
     let addr = SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT));
@@ -322,6 +337,16 @@ async fn handle_message(text: &str, peer: SocketAddr, rate_limiter: &RateLimiter
 
             log::info!("Pair request from {} ({})", device_name, device_id);
 
+            // Emit device identified event
+            if let Some(handle) = APP_HANDLE.get() {
+                let _ = handle.emit("device-identified", DeviceIdentifiedEvent {
+                    device_name: device_name.to_string(),
+                    device_id: device_id.to_string(),
+                    peer: peer.to_string(),
+                    protocol_version: "1.0.0".to_string(),
+                });
+            }
+
             // Accept pairing (in production, would check device limit and prompt user)
             let companion_name = hostname::get()
                 .map(|h| h.to_string_lossy().to_string())
@@ -344,6 +369,16 @@ async fn handle_message(text: &str, peer: SocketAddr, rate_limiter: &RateLimiter
             let device_id = msg.get("deviceId")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
+
+            // Emit device identified event
+            if let Some(handle) = APP_HANDLE.get() {
+                let _ = handle.emit("device-identified", DeviceIdentifiedEvent {
+                    device_name: device_name.to_string(),
+                    device_id: device_id.to_string(),
+                    peer: peer.to_string(),
+                    protocol_version: "1.1.0".to_string(),
+                });
+            }
 
             log::info!(
                 "Hello from {} (v{}, id={})",
