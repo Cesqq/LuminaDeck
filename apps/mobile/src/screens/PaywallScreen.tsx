@@ -57,9 +57,9 @@ export function PaywallScreen({ visible, onClose }: PaywallScreenProps) {
   const { purchase, restore, isPurchasing, isRestoring } = usePro();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'lifetime'>('yearly');
   const [prices, setPrices] = useState<Record<string, string>>({
-    monthly: '$2.99',
-    yearly: '$24.99',
-    lifetime: '$49.99',
+    monthly: '$1.99',
+    yearly: '$14.99',
+    lifetime: '$29.99',
   });
 
   const plans: PlanOption[] = [
@@ -75,7 +75,7 @@ export function PaywallScreen({ visible, onClose }: PaywallScreenProps) {
       price: prices.yearly,
       period: '/year',
       badge: 'BEST VALUE',
-      savings: 'Save 30%',
+      savings: 'Save 37%',
     },
     {
       id: 'lifetime',
