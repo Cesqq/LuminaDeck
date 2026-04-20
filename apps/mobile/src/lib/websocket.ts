@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import {
   HEARTBEAT_INTERVAL_MS,
   HEARTBEAT_MISS_THRESHOLD,
@@ -13,6 +14,10 @@ import type {
 type StatusListener = (status: ConnectionStatus) => void;
 type MessageListener = (msg: CompanionMessage) => void;
 
+function generateDeviceId(): string {
+  return 'ld-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
 export class LuminaDeckClient {
   private ws: WebSocket | null = null;
   private url: string = '';
@@ -24,6 +29,8 @@ export class LuminaDeckClient {
   private messageListeners: MessageListener[] = [];
   private _status: ConnectionStatus = 'disconnected';
   private shouldReconnect = false;
+  private deviceName: string = `${Platform.OS === 'ios' ? 'iPhone' : 'Android'}`;
+  private deviceId: string = generateDeviceId();
 
   get status(): ConnectionStatus {
     return this._status;
@@ -95,6 +102,16 @@ export class LuminaDeckClient {
         this.reconnectAttempt = 0;
         this.missedHeartbeats = 0;
         this.setStatus('connected');
+
+        // Send hello handshake so companion identifies this device
+        this.ws?.send(JSON.stringify({
+          type: 'hello',
+          protocolVersion: '1.1.0',
+          clientVersion: '1.0.0',
+          deviceName: this.deviceName,
+          deviceId: this.deviceId,
+        }));
+
         this.startHeartbeat();
       };
 
