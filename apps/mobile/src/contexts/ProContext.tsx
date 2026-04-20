@@ -28,6 +28,7 @@ interface ProContextValue {
 
 const defaultProStatus: ProStatus = {
   isPro: false,
+  plan: 'free',
   source: 'none',
 };
 
@@ -61,7 +62,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
 
         const hasEntitlement = await checkProEntitlement();
         if (hasEntitlement) {
-          setProStatus({ isPro: true, source: 'apple_iap' });
+          setProStatus({ isPro: true, plan: 'lifetime', source: 'apple_iap' });
         }
       }
     });
@@ -79,7 +80,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
   const purchase = useCallback(async () => {
     if (!isIAPAvailable()) {
       // Offline/dev mode: simulate purchase
-      setPro({ isPro: true, source: 'apple_iap', purchaseDate: new Date().toISOString() });
+      setPro({ isPro: true, plan: 'lifetime', source: 'apple_iap', purchaseDate: new Date().toISOString() });
       Alert.alert('Pro Activated', 'Pro features are now available (dev mode).');
       return;
     }
@@ -88,7 +89,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     try {
       const success = await purchasePro();
       if (success) {
-        setProStatus({ isPro: true, source: 'apple_iap', purchaseDate: new Date().toISOString() });
+        setProStatus({ isPro: true, plan: 'lifetime', source: 'apple_iap', purchaseDate: new Date().toISOString() });
         Alert.alert('Pro Activated', 'Thank you! All Pro features are now unlocked.');
       }
     } catch (e: any) {
@@ -108,7 +109,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     try {
       const found = await restorePurchases();
       if (found) {
-        setProStatus({ isPro: true, source: 'apple_iap', purchaseDate: new Date().toISOString() });
+        setProStatus({ isPro: true, plan: 'lifetime', source: 'apple_iap', purchaseDate: new Date().toISOString() });
         Alert.alert('Restored', 'Your Pro purchase has been restored.');
       } else {
         Alert.alert('No Purchase Found', 'No previous Pro purchase was found for this Apple ID.');

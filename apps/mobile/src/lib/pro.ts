@@ -23,7 +23,7 @@ export async function loadProStatus(): Promise<ProStatus> {
   try {
     const cached = await SecureStore.getItemAsync(PRO_CACHE_KEY);
     if (!cached) {
-      return { isPro: false, source: 'none' };
+      return { isPro: false, plan: 'free', source: 'none' };
     }
 
     const status: ProStatus = JSON.parse(cached);
@@ -40,7 +40,7 @@ export async function loadProStatus(): Promise<ProStatus> {
 
     return status;
   } catch {
-    return { isPro: false, source: 'none' };
+    return { isPro: false, plan: 'free', source: 'none' };
   }
 }
 
@@ -53,6 +53,7 @@ export async function saveProStatus(isPro: boolean, source: ProStatus['source'])
 
   const status: ProStatus = {
     isPro,
+    plan: isPro ? 'lifetime' : 'free',
     purchaseDate: now.toISOString(),
     expiresAt: gracePeriodEnd.toISOString(),
     source,

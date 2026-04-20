@@ -11,8 +11,8 @@ import {
 } from './protocol';
 
 describe('Protocol Constants', () => {
-  it('has protocol version 1.0.0', () => {
-    expect(PROTOCOL_VERSION).toBe('1.0.0');
+  it('has protocol version 1.1.0', () => {
+    expect(PROTOCOL_VERSION).toBe('1.1.0');
   });
 
   it('heartbeat interval is 2 seconds', () => {
@@ -89,8 +89,8 @@ describe('Protocol Types', () => {
 describe('Limits', () => {
   it('FREE_LIMITS has correct values', async () => {
     const { FREE_LIMITS } = await import('./types');
-    expect(FREE_LIMITS.maxButtons).toBe(8);
-    expect(FREE_LIMITS.maxPages).toBe(1);
+    expect(FREE_LIMITS.maxButtons).toBe(12);
+    expect(FREE_LIMITS.maxPages).toBe(2);
     expect(FREE_LIMITS.maxPairedDevices).toBe(1);
     expect(FREE_LIMITS.customImages).toBe(false);
     expect(FREE_LIMITS.multiAction).toBe(false);
@@ -98,8 +98,8 @@ describe('Limits', () => {
 
   it('PRO_LIMITS has correct values', async () => {
     const { PRO_LIMITS } = await import('./types');
-    expect(PRO_LIMITS.maxButtons).toBe(30);
-    expect(PRO_LIMITS.maxPages).toBe(20);
+    expect(PRO_LIMITS.maxButtons).toBe(64);
+    expect(PRO_LIMITS.maxPages).toBe(50);
     expect(PRO_LIMITS.maxPairedDevices).toBe(5);
     expect(PRO_LIMITS.customImages).toBe(true);
     expect(PRO_LIMITS.multiAction).toBe(true);

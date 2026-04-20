@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   gridLayout: '3x4',
   hapticIntensity: 'medium',
   pressSoundEnabled: false,
-  proStatus: { isPro: false, source: 'none' },
+  proStatus: { isPro: false, plan: 'free', source: 'none' },
 };
 
 // --- Haptic mapping ---

@@ -97,7 +97,7 @@ const PALETTE_COLORS = [
   '#4CAF50', '#2196F3', '#FF5722', '#9C27B0', '#607D8B',
 ];
 
-type SubActionType = 'keybind' | 'app_launch' | 'system_action';
+type SubActionType = 'keybind' | 'app_launch' | 'system_action' | 'text_input';
 
 interface SubAction {
   id: string;
@@ -807,6 +807,7 @@ export function EditorScreen({
                     keybind: 'Keybind',
                     app_launch: 'App Launch',
                     system_action: 'System',
+                    text_input: 'Text',
                   };
                   const selected = sa.type === t;
                   return (
