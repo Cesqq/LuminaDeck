@@ -18,6 +18,7 @@ interface ButtonGridProps {
   hapticStyle: Haptics.ImpactFeedbackStyle | null;
   onPress: (button: ButtonConfig) => void;
   onLongPress: (button: ButtonConfig) => void;
+  onEmptyPress?: (position: number) => void;
 }
 
 export function ButtonGrid({
@@ -27,6 +28,7 @@ export function ButtonGrid({
   hapticStyle,
   onPress,
   onLongPress,
+  onEmptyPress,
 }: ButtonGridProps) {
   const { cols, rows } = GRID_DIMENSIONS[layout];
   const totalSlots = cols * rows;
@@ -65,7 +67,7 @@ export function ButtonGrid({
           button={button}
           size={cellSize}
           colors={colors}
-          onPress={button ? () => handlePress(button) : undefined}
+          onPress={button ? () => handlePress(button) : onEmptyPress ? () => onEmptyPress(index) : undefined}
           onLongPress={button ? () => onLongPress(button) : undefined}
         />
       ))}

@@ -8,16 +8,28 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import type { ButtonConfig, ProfileConfig, PageConfig } from '@luminadeck/shared';
+import type { ButtonConfig, ProfileConfig, PageConfig, FolderAction } from '@luminadeck/shared';
 import { GRID_DIMENSIONS } from '@luminadeck/shared';
 import { ButtonGrid } from '../components/ButtonGrid';
+import { FolderView } from '../components/FolderView';
 import { ConnectionStatus } from '../components/ConnectionStatus';
+import { TileLibraryScreen } from './TileLibraryScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import { useConnection } from '../contexts/ConnectionContext';
 import { usePro } from '../contexts/ProContext';
 import { loadProfile, saveProfile, loadSettings, hapticStyleFromIntensity } from '../lib/storage';
 import type { HapticIntensity } from '../lib/storage';
 import * as Haptics from 'expo-haptics';
+
+interface TileLibraryState {
+  visible: boolean;
+  page: number;
+  position: number;
+}
+
+interface FolderState {
+  folder: FolderAction;
+}
 
 interface HomeScreenProps {
   onNavigateSettings: () => void;
@@ -33,6 +45,8 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
   const [hapticStyle, setHapticStyle] = useState<Haptics.ImpactFeedbackStyle | null>(
     Haptics.ImpactFeedbackStyle.Medium,
   );
+  const [tileLibrary, setTileLibrary] = useState<TileLibraryState | null>(null);
+  const [openFolder, setOpenFolder] = useState<FolderState | null>(null);
   const pagerRef = useRef<PagerView>(null);
 
   useEffect(() => {
@@ -45,6 +59,12 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
   const handleButtonPress = useCallback(
     (button: ButtonConfig) => {
       if (!button.action) return;
+
+      // Open folder view when a folder-type button is pressed
+      if (button.action.type === 'folder') {
+        setOpenFolder({ folder: button.action as FolderAction });
+        return;
+      }
 
       if (status === 'connected') {
         const msgId = `exec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -64,6 +84,50 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
     },
     [onEditButton, currentPage],
   );
+
+  const handleEmptyPress = useCallback(
+    (position: number) => {
+      setTileLibrary({ visible: true, page: currentPage, position });
+    },
+    [currentPage],
+  );
+
+  const handleTileSelect = useCallback(
+    async (newButton: ButtonConfig) => {
+      setTileLibrary(null);
+      if (!profile) return;
+
+      const pageIdx = newButton.page;
+      const page = profile.pages[pageIdx];
+      if (!page) return;
+
+      // If the new button has no action, open the editor for customization
+      if (!newButton.action) {
+        onEditButton(newButton, pageIdx);
+        return;
+      }
+
+      // Add the button to the profile and persist
+      const updatedButtons = [...page.buttons, newButton];
+      const updatedPages = [...profile.pages];
+      updatedPages[pageIdx] = { ...page, buttons: updatedButtons };
+      const updatedProfile: ProfileConfig = {
+        ...profile,
+        pages: updatedPages,
+      };
+      setProfile(updatedProfile);
+      await saveProfile(updatedProfile);
+    },
+    [profile, onEditButton],
+  );
+
+  const handleTileLibraryClose = useCallback(() => {
+    setTileLibrary(null);
+  }, []);
+
+  const handleFolderBack = useCallback(() => {
+    setOpenFolder(null);
+  }, []);
 
   if (!profile) {
     return (
@@ -129,6 +193,7 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
                 hapticStyle={hapticStyle}
                 onPress={handleButtonPress}
                 onLongPress={handleButtonLongPress}
+                onEmptyPress={handleEmptyPress}
               />
             </View>
           ))}
@@ -145,6 +210,7 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
                 hapticStyle={hapticStyle}
                 onPress={handleButtonPress}
                 onLongPress={handleButtonLongPress}
+                onEmptyPress={handleEmptyPress}
               />
             </>
           )}
@@ -170,6 +236,29 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
             />
           ))}
         </View>
+      )}
+
+      {/* Tile library modal */}
+      {tileLibrary && (
+        <TileLibraryScreen
+          visible={tileLibrary.visible}
+          targetPage={tileLibrary.page}
+          targetPosition={tileLibrary.position}
+          onSelect={handleTileSelect}
+          onClose={handleTileLibraryClose}
+        />
+      )}
+
+      {/* Folder sub-grid overlay */}
+      {openFolder && (
+        <FolderView
+          folder={openFolder.folder}
+          colors={colors}
+          hapticStyle={hapticStyle}
+          onBack={handleFolderBack}
+          onButtonPress={handleButtonPress}
+          onButtonLongPress={handleButtonLongPress}
+        />
       )}
     </View>
   );

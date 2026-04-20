@@ -59,6 +59,24 @@ export function ButtonCell({
   };
 
   if (!button) {
+    if (onPress) {
+      return (
+        <Pressable
+          style={[cellStyle, { opacity: 0.3 }]}
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel="Empty cell, tap to add tile"
+        >
+          <Text
+            style={[styles.emptyPlus, { color: colors.textSecondary }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.3}
+          >
+            +
+          </Text>
+        </Pressable>
+      );
+    }
     return (
       <View
         style={[cellStyle, { opacity: 0.3 }]}
@@ -143,5 +161,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     paddingHorizontal: 4,
+  },
+  emptyPlus: {
+    fontSize: 22,
+    fontWeight: '300',
+    opacity: 0.6,
   },
 });
