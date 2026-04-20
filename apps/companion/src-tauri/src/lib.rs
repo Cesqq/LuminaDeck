@@ -2,6 +2,10 @@ mod actions;
 mod server;
 mod security;
 mod discovery;
+mod plugins;
+mod window_monitor;
+
+use plugins::Plugin;
 
 use tauri::Manager;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
@@ -256,6 +260,45 @@ pub fn run() {
                 Err(e) => {
                     log::error!("Failed to generate TLS cert: {}", e);
                 }
+            }
+
+            // Initialise plugin system
+            {
+                let mut pm = plugins::PluginManager::new();
+
+                let mut obs = plugins::obs::ObsPlugin::new();
+                let mut discord = plugins::discord::DiscordPlugin::new();
+
+                // Init runs async; use block_on inside setup since we're
+                // already on the main thread before the event loop starts.
+                let rt = tokio::runtime::Handle::current();
+                rt.block_on(async {
+                    if let Err(e) = obs.init().await {
+                        log::warn!("OBS plugin init error: {}", e);
+                    }
+                    if let Err(e) = discord.init().await {
+                        log::warn!("Discord plugin init error: {}", e);
+                    }
+                });
+
+                pm.register(Box::new(obs));
+                pm.register(Box::new(discord));
+
+                for (name, avail) in pm.status_summary() {
+                    log::info!("Plugin '{}': available={}", name, avail);
+                }
+
+                log::info!(
+                    "Plugin capabilities: {:?}",
+                    pm.capabilities()
+                );
+            }
+
+            // Start window monitor
+            {
+                let monitor = window_monitor::WindowMonitor::new();
+                monitor.start(handle.clone());
+                log::info!("Window monitor started (poll every 2 s)");
             }
 
             // Start mDNS discovery broadcast

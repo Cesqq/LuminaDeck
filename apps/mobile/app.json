@@ -14,7 +14,7 @@
       "backgroundColor": "#0D0D0D"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.luminadeck.app",
       "buildNumber": "2",
       "infoPlist": {
