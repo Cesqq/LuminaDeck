@@ -3,7 +3,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 
 const SERVICE_TYPE: &str = "_luminadeck._tcp.local.";
-const SERVICE_NAME: &str = "LuminaDeck Companion";
+const SERVICE_NAME: &str = "LuminaDeck Studio";
 
 /// mDNS discovery manager. Broadcasts only during active pairing mode.
 pub struct DiscoveryManager {

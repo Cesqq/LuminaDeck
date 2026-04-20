@@ -323,7 +323,7 @@ pub fn run() {
                 .build()?;
 
             let _ = TrayIconBuilder::new()
-                .tooltip("LuminaDeck Companion")
+                .tooltip("LuminaDeck Studio")
                 .menu(&tray_menu)
                 .on_menu_event(|app, event| {
                     match event.id().as_ref() {
@@ -373,7 +373,7 @@ pub fn run() {
             });
 
             let local_ip = get_local_ip();
-            log::info!("LuminaDeck Companion started");
+            log::info!("LuminaDeck Studio started");
             log::info!("Local IP: {} | Port: 9876 | Connect from iPhone: wss://{}:9876", local_ip, local_ip);
             Ok(())
         })
