@@ -334,6 +334,61 @@ async fn handle_message(text: &str, peer: SocketAddr, rate_limiter: &RateLimiter
             }).to_string()
         }
 
+        "hello" => {
+            let client_version = msg.get("clientVersion")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            let device_name = msg.get("deviceName")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown");
+            let device_id = msg.get("deviceId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            log::info!(
+                "Hello from {} (v{}, id={})",
+                device_name, client_version, device_id
+            );
+
+            let companion_name = hostname::get()
+                .map(|h| h.to_string_lossy().to_string())
+                .unwrap_or_else(|_| "LuminaDeck PC".to_string());
+
+            serde_json::json!({
+                "type": "hello_ack",
+                "protocolVersion": "1.1.0",
+                "companionVersion": "0.1.0",
+                "companionName": companion_name,
+                "capabilities": [
+                    "keybind",
+                    "app_launch",
+                    "system_action",
+                    "multi_action",
+                    "text_input"
+                ]
+            }).to_string()
+        }
+
+        "text_input" => {
+            let text = msg.get("text")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let id = msg.get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+
+            log::info!("text_input received from {}: {} chars", peer, text.len());
+
+            // Phase B will implement actual text injection via SendInput.
+            // For now, acknowledge success.
+            serde_json::json!({
+                "type": "execute_result",
+                "id": id,
+                "success": true,
+                "info": "text_input acknowledged (injection pending Phase B)"
+            }).to_string()
+        }
+
         "execute" => {
             // Rate limit check
             if !rate_limiter.check(peer) {

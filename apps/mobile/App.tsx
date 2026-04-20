@@ -1,17 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import type { ButtonConfig } from '@luminadeck/shared';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
-import { ConnectionProvider } from './src/contexts/ConnectionContext';
+import { ConnectionProvider, useConnection } from './src/contexts/ConnectionContext';
 import { ProProvider } from './src/contexts/ProContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { EditorScreen } from './src/screens/EditorScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { ConnectionGateScreen } from './src/screens/ConnectionGateScreen';
 import { loadProfile, saveProfile } from './src/lib/storage';
 
 const ONBOARDING_KEY = '@luminadeck/onboarding_complete';
@@ -25,9 +26,11 @@ interface EditorState {
 
 function AppContent() {
   const { colors } = useTheme();
+  const { status } = useConnection();
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [editorState, setEditorState] = useState<EditorState | null>(null);
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [isGated, setIsGated] = useState(true);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then((val) => {
@@ -37,6 +40,10 @@ function AppContent() {
 
   const handleOnboardingComplete = useCallback(() => {
     setShowOnboarding(false);
+  }, []);
+
+  const handleConnected = useCallback(() => {
+    setIsGated(false);
   }, []);
 
   const handleNavigateSettings = useCallback(() => {
@@ -90,6 +97,16 @@ function AppContent() {
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
         <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
         <OnboardingScreen onComplete={handleOnboardingComplete} />
+      </SafeAreaView>
+    );
+  }
+
+  // Connection gate: must connect before seeing the deck
+  if (isGated) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
+        <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
+        <ConnectionGateScreen onConnected={handleConnected} />
       </SafeAreaView>
     );
   }
@@ -152,6 +169,22 @@ function AppContent() {
           onPress={setActiveTab}
         />
       </View>
+
+      {/* Reconnecting overlay -- shown when connection drops while in deck */}
+      {status === 'connecting' && (
+        <View style={styles.reconnectingOverlay}>
+          <View style={styles.reconnectingBox}>
+            <ActivityIndicator color={colors.text} size="large" />
+            <Text
+              style={[styles.reconnectingText, { color: colors.text }]}
+              allowFontScaling
+              maxFontSizeMultiplier={1.5}
+            >
+              Reconnecting...
+            </Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -258,6 +291,21 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 10,
+    fontWeight: '600',
+  },
+  reconnectingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  reconnectingBox: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  reconnectingText: {
+    fontSize: 16,
     fontWeight: '600',
   },
 });

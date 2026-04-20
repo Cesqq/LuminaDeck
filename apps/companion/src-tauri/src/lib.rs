@@ -17,6 +17,7 @@ pub struct AppState {
     pub cert_fingerprint: Arc<Mutex<String>>,
     pub connected_count: Arc<Mutex<u32>>,
     pub server_started_at: Arc<Mutex<Option<u64>>>,
+    pub discovery_manager: Arc<Mutex<Option<discovery::DiscoveryManager>>>,
 }
 
 impl Default for AppState {
@@ -26,6 +27,7 @@ impl Default for AppState {
             cert_fingerprint: Arc::new(Mutex::new(String::new())),
             connected_count: Arc::new(Mutex::new(0)),
             server_started_at: Arc::new(Mutex::new(None)),
+            discovery_manager: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -254,6 +256,17 @@ pub fn run() {
                 Err(e) => {
                     log::error!("Failed to generate TLS cert: {}", e);
                 }
+            }
+
+            // Start mDNS discovery broadcast
+            match discovery::DiscoveryManager::new(9877) {
+                Ok(dm) => {
+                    if let Err(e) = dm.start_broadcast() {
+                        log::error!("mDNS broadcast failed: {}", e);
+                    }
+                    *state.discovery_manager.lock() = Some(dm);
+                }
+                Err(e) => log::error!("mDNS init failed: {}", e),
             }
 
             // Setup system tray with context menu

@@ -29,13 +29,18 @@ impl DiscoveryManager {
             .map(|h| h.to_string_lossy().to_string())
             .unwrap_or_else(|_| "luminadeck-pc".to_string());
 
+        let mut props = std::collections::HashMap::new();
+        props.insert("version".to_string(), "1.1.0".to_string());
+        props.insert("port".to_string(), self.port.to_string());
+        props.insert("name".to_string(), hostname.clone());
+
         let service = ServiceInfo::new(
             SERVICE_TYPE,
             SERVICE_NAME,
             &format!("{}.", hostname),
             "",
             self.port,
-            None,
+            props,
         )?;
 
         self.daemon.register(service)?;
