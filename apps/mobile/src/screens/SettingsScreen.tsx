@@ -7,6 +7,7 @@ import {
   Switch,
   StyleSheet,
   Alert,
+  Modal,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import type { ThemeId, GridLayout } from '@luminadeck/shared';
@@ -22,6 +23,9 @@ import {
 } from '../lib/storage';
 import { exportProfile, importProfile } from '../lib/profileExport';
 import type { AppSettings, HapticIntensity } from '../lib/storage';
+import { PaywallScreen } from './PaywallScreen';
+import { ProfileManagerScreen } from './ProfileManagerScreen';
+import { MacroListScreen } from './MacroListScreen';
 
 const GRID_OPTIONS: GridLayout[] = ['2x4', '3x4', '4x5'];
 const HAPTIC_OPTIONS: { value: HapticIntensity; label: string }[] = [
@@ -41,6 +45,9 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { status } = useConnection();
   const { isPro, priceString, isPurchasing, isRestoring, purchase, restore } = usePro();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showProfiles, setShowProfiles] = useState(false);
+  const [showMacros, setShowMacros] = useState(false);
 
   useEffect(() => {
     loadSettings().then(setSettings);
@@ -62,6 +69,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const availableThemes = isPro ? THEME_IDS : (['obsidian'] as ThemeId[]);
 
   return (
+    <>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
@@ -290,6 +298,38 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
         </View>
       </View>
 
+      {/* Profiles */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Profiles</Text>
+        <TouchableOpacity
+          style={[styles.settingItem, { borderBottomColor: colors.buttonBorder }]}
+          onPress={() => setShowProfiles(true)}
+        >
+          <Text style={[styles.settingLabel, { color: colors.text }]}>Manage Profiles</Text>
+          <Text style={[styles.settingValue, { color: colors.textSecondary }]}>{'\u203A'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Macros */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Macros</Text>
+        <TouchableOpacity
+          style={[styles.settingItem, { borderBottomColor: colors.buttonBorder }]}
+          onPress={() => {
+            if (!isPro) {
+              Alert.alert('Pro Feature', 'Macros require LuminaDeck Pro.');
+              return;
+            }
+            setShowMacros(true);
+          }}
+        >
+          <Text style={[styles.settingLabel, { color: colors.text }]}>Macro Editor</Text>
+          <Text style={[styles.settingValue, { color: isPro ? colors.textSecondary : colors.accent }]}>
+            {isPro ? '\u203A' : 'PRO'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Pro Upgrade */}
       {!isPro && (
         <View style={styles.section}>
@@ -318,7 +358,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             </Text>
             <TouchableOpacity
               style={[styles.proButton, { backgroundColor: colors.accent, opacity: isPurchasing ? 0.6 : 1 }]}
-              onPress={purchase}
+              onPress={() => setShowPaywall(true)}
               disabled={isPurchasing}
               accessibilityRole="button"
               accessibilityLabel={`Upgrade to Pro for ${priceString}`}
@@ -457,6 +497,12 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
         </View>
       </View>
     </ScrollView>
+    <PaywallScreen visible={showPaywall} onClose={() => setShowPaywall(false)} />
+    <ProfileManagerScreen visible={showProfiles} onClose={() => setShowProfiles(false)} />
+    <Modal visible={showMacros} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowMacros(false)}>
+      <MacroListScreen onClose={() => setShowMacros(false)} />
+    </Modal>
+    </>
   );
 }
 
@@ -632,6 +678,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     gap: 8,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  settingValue: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   infoRow: {
     flexDirection: 'row',

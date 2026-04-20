@@ -17,6 +17,11 @@ import type {
   SystemAction,
   SystemActionName,
   MultiAction,
+  TextInputAction,
+  OBSAction,
+  OBSCommand,
+  DiscordAction,
+  DiscordCommand,
 } from '@luminadeck/shared';
 import { VALID_KEYS, MODIFIER_KEYS } from '@luminadeck/shared';
 import { useTheme } from '../contexts/ThemeContext';
@@ -24,6 +29,8 @@ import { usePro } from '../contexts/ProContext';
 import { pickButtonImage } from '../lib/imagePicker';
 import { ICON_CATEGORIES, getIconsByCategory, getAllIcons, type IconCategory } from '../lib/icons';
 import { IconView } from '../components/IconView';
+import { ColorPicker } from '../components/ColorPicker';
+import { GifPicker } from '../components/GifPicker';
 
 // --- Key categories for the picker ---
 
@@ -89,6 +96,24 @@ const ACTION_TYPES: { value: ActionType; label: string; proOnly: boolean }[] = [
   { value: 'app_launch', label: 'App Launch', proOnly: false },
   { value: 'system_action', label: 'System', proOnly: false },
   { value: 'multi_action', label: 'Multi-Action', proOnly: true },
+  { value: 'text_input', label: 'Text Input', proOnly: false },
+  { value: 'obs', label: 'OBS Studio', proOnly: true },
+  { value: 'discord', label: 'Discord', proOnly: true },
+];
+
+const OBS_COMMANDS: { value: OBSCommand; label: string }[] = [
+  { value: 'switch_scene', label: 'Switch Scene' },
+  { value: 'toggle_record', label: 'Toggle Record' },
+  { value: 'toggle_stream', label: 'Toggle Stream' },
+  { value: 'toggle_source', label: 'Toggle Source' },
+  { value: 'replay_buffer', label: 'Replay Buffer' },
+  { value: 'obs_screenshot', label: 'Screenshot' },
+];
+
+const DISCORD_COMMANDS: { value: DiscordCommand; label: string }[] = [
+  { value: 'toggle_mute', label: 'Toggle Mute' },
+  { value: 'toggle_deafen', label: 'Toggle Deafen' },
+  { value: 'push_to_talk', label: 'Push to Talk' },
 ];
 
 const PALETTE_COLORS = [
@@ -186,6 +211,30 @@ export function EditorScreen({
   // Custom image state
   const [customImage, setCustomImage] = useState<string | undefined>(button.customImage);
 
+  // GIF picker state
+  const [showGifPicker, setShowGifPicker] = useState(false);
+
+  // Text input action state
+  const [textInputValue, setTextInputValue] = useState(
+    button.action?.type === 'text_input' ? (button.action as TextInputAction).text : '',
+  );
+
+  // OBS action state
+  const [obsCommand, setObsCommand] = useState<OBSCommand>(
+    button.action?.type === 'obs' ? (button.action as OBSAction).command : 'switch_scene',
+  );
+  const [obsSceneName, setObsSceneName] = useState(
+    button.action?.type === 'obs' ? (button.action as OBSAction).sceneName ?? '' : '',
+  );
+  const [obsSourceName, setObsSourceName] = useState(
+    button.action?.type === 'obs' ? (button.action as OBSAction).sourceName ?? '' : '',
+  );
+
+  // Discord action state
+  const [discordCommand, setDiscordCommand] = useState<DiscordCommand>(
+    button.action?.type === 'discord' ? (button.action as DiscordAction).command : 'toggle_mute',
+  );
+
   const addSubAction = useCallback(() => {
     setSubActions((prev) => {
       if (prev.length >= MAX_SUB_ACTIONS) return prev;
@@ -244,7 +293,7 @@ export function EditorScreen({
         return { type: 'system_action', action: systemAction };
       case 'multi_action': {
         if (subActions.length === 0) return null;
-        const actions: (KeybindAction | AppLaunchAction | SystemAction)[] = [];
+        const actions: (KeybindAction | AppLaunchAction | SystemAction | TextInputAction)[] = [];
         for (const sa of subActions) {
           switch (sa.type) {
             case 'keybind':
@@ -258,15 +307,30 @@ export function EditorScreen({
             case 'system_action':
               actions.push({ type: 'system_action', action: sa.systemAction });
               break;
+            case 'text_input':
+              actions.push({ type: 'text_input', text: '' });
+              break;
           }
         }
         const delays = subActions.map((sa) => sa.delay);
         return { type: 'multi_action', actions, delays };
       }
+      case 'text_input':
+        if (!textInputValue.trim()) return null;
+        return { type: 'text_input', text: textInputValue.trim() };
+      case 'obs':
+        return {
+          type: 'obs',
+          command: obsCommand,
+          ...(obsCommand === 'switch_scene' && obsSceneName ? { sceneName: obsSceneName } : {}),
+          ...(obsCommand === 'toggle_source' && obsSourceName ? { sourceName: obsSourceName } : {}),
+        } as OBSAction;
+      case 'discord':
+        return { type: 'discord', command: discordCommand };
       default:
         return null;
     }
-  }, [actionType, selectedKeys, appPath, systemAction, subActions]);
+  }, [actionType, selectedKeys, appPath, systemAction, subActions, textInputValue, obsCommand, obsSceneName, obsSourceName, discordCommand]);
 
   const handleSave = useCallback(() => {
     if (label.length > 16) {
@@ -456,7 +520,7 @@ export function EditorScreen({
                 ]}
                 onPress={() => {
                   if (disabled) {
-                    Alert.alert('Pro Feature', 'Multi-Action requires LuminaDeck Pro.');
+                    Alert.alert('Pro Feature', `${typeLabel} requires LuminaDeck Pro.`);
                     return;
                   }
                   setActionType(value);
@@ -698,6 +762,194 @@ export function EditorScreen({
                     numberOfLines={1}
                   >
                     {actionLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {actionType === 'text_input' && (
+        <View style={styles.section}>
+          <Text
+            style={[styles.sectionTitle, { color: colors.text }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          >
+            Text to Type
+          </Text>
+          <TextInput
+            style={[
+              styles.textInput,
+              {
+                backgroundColor: colors.buttonBackground,
+                color: colors.text,
+                borderColor: colors.buttonBorder,
+                minHeight: 80,
+                textAlignVertical: 'top',
+              },
+            ]}
+            value={textInputValue}
+            onChangeText={setTextInputValue}
+            placeholder="Enter text to type..."
+            placeholderTextColor={colors.textSecondary + '88'}
+            multiline
+            maxLength={4096}
+            accessibilityLabel="Text to type"
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          />
+          <Text
+            style={[styles.charCount, { color: colors.textSecondary }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          >
+            {textInputValue.length}/4096
+          </Text>
+        </View>
+      )}
+
+      {actionType === 'obs' && (
+        <View style={styles.section}>
+          <Text
+            style={[styles.sectionTitle, { color: colors.text }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          >
+            OBS Command
+          </Text>
+          <View style={styles.systemActionsGrid}>
+            {OBS_COMMANDS.map(({ value, label: cmdLabel }) => {
+              const isSelected = obsCommand === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[
+                    styles.systemActionChip,
+                    {
+                      backgroundColor: isSelected ? colors.accent : colors.buttonBackground,
+                      borderColor: isSelected ? colors.accent : colors.buttonBorder,
+                    },
+                  ]}
+                  onPress={() => setObsCommand(value)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${cmdLabel}${isSelected ? ', selected' : ''}`}
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Text
+                    style={[
+                      styles.systemActionText,
+                      { color: isSelected ? '#FFFFFF' : colors.text },
+                    ]}
+                    allowFontScaling
+                    maxFontSizeMultiplier={1.5}
+                  >
+                    {cmdLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {obsCommand === 'switch_scene' && (
+            <View style={{ marginTop: 12 }}>
+              <Text
+                style={[styles.hintText, { color: colors.textSecondary, marginBottom: 6 }]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                Scene Name
+              </Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: colors.buttonBackground,
+                    color: colors.text,
+                    borderColor: colors.buttonBorder,
+                  },
+                ]}
+                value={obsSceneName}
+                onChangeText={setObsSceneName}
+                placeholder="e.g. Gaming, Webcam Only"
+                placeholderTextColor={colors.textSecondary + '88'}
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="OBS scene name"
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              />
+            </View>
+          )}
+          {obsCommand === 'toggle_source' && (
+            <View style={{ marginTop: 12 }}>
+              <Text
+                style={[styles.hintText, { color: colors.textSecondary, marginBottom: 6 }]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                Source Name
+              </Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: colors.buttonBackground,
+                    color: colors.text,
+                    borderColor: colors.buttonBorder,
+                  },
+                ]}
+                value={obsSourceName}
+                onChangeText={setObsSourceName}
+                placeholder="e.g. Camera, Alert Box"
+                placeholderTextColor={colors.textSecondary + '88'}
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="OBS source name"
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              />
+            </View>
+          )}
+        </View>
+      )}
+
+      {actionType === 'discord' && (
+        <View style={styles.section}>
+          <Text
+            style={[styles.sectionTitle, { color: colors.text }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          >
+            Discord Command
+          </Text>
+          <View style={styles.systemActionsGrid}>
+            {DISCORD_COMMANDS.map(({ value, label: cmdLabel }) => {
+              const isSelected = discordCommand === value;
+              return (
+                <TouchableOpacity
+                  key={value}
+                  style={[
+                    styles.systemActionChip,
+                    {
+                      backgroundColor: isSelected ? colors.accent : colors.buttonBackground,
+                      borderColor: isSelected ? colors.accent : colors.buttonBorder,
+                    },
+                  ]}
+                  onPress={() => setDiscordCommand(value)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${cmdLabel}${isSelected ? ', selected' : ''}`}
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Text
+                    style={[
+                      styles.systemActionText,
+                      { color: isSelected ? '#FFFFFF' : colors.text },
+                    ]}
+                    allowFontScaling
+                    maxFontSizeMultiplier={1.5}
+                  >
+                    {cmdLabel}
                   </Text>
                 </TouchableOpacity>
               );
@@ -1075,28 +1327,7 @@ export function EditorScreen({
         >
           Button Color
         </Text>
-        <View style={styles.colorGrid}>
-          {PALETTE_COLORS.map((hex) => {
-            const isSelected = selectedColor === hex;
-            return (
-              <TouchableOpacity
-                key={hex}
-                style={[
-                  styles.colorSwatch,
-                  {
-                    backgroundColor: hex,
-                    borderWidth: isSelected ? 3 : 1,
-                    borderColor: isSelected ? '#FFFFFF' : colors.buttonBorder,
-                  },
-                ]}
-                onPress={() => setSelectedColor(hex)}
-                accessibilityRole="button"
-                accessibilityLabel={`Color ${hex}${isSelected ? ', selected' : ''}`}
-                accessibilityState={{ selected: isSelected }}
-              />
-            );
-          })}
-        </View>
+        <ColorPicker value={selectedColor} onChange={setSelectedColor} colors={colors} />
       </View>
 
       {/* Icon Picker */}
@@ -1262,32 +1493,50 @@ export function EditorScreen({
             </View>
           </View>
         ) : (
-          <TouchableOpacity
-            style={[
-              styles.imagePickerButton,
-              { borderColor: colors.buttonBorder, backgroundColor: colors.buttonBackground },
-            ]}
-            onPress={handleImagePicker}
-            accessibilityRole="button"
-            accessibilityLabel="Choose custom button image"
-          >
-            <Text
-              style={[styles.imagePickerText, { color: colors.textSecondary }]}
-              allowFontScaling
-              maxFontSizeMultiplier={1.5}
+          <>
+            <TouchableOpacity
+              style={[
+                styles.imagePickerButton,
+                { borderColor: colors.buttonBorder, backgroundColor: colors.buttonBackground },
+              ]}
+              onPress={handleImagePicker}
+              accessibilityRole="button"
+              accessibilityLabel="Choose custom button image"
             >
-              Choose from Camera Roll
-            </Text>
-            {!isPro && (
               <Text
-                style={[styles.proTag, { color: colors.accent }]}
+                style={[styles.imagePickerText, { color: colors.textSecondary }]}
                 allowFontScaling
                 maxFontSizeMultiplier={1.5}
               >
-                PRO
+                Choose from Camera Roll
               </Text>
+              {!isPro && (
+                <Text
+                  style={[styles.proTag, { color: colors.accent }]}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                >
+                  PRO
+                </Text>
+              )}
+            </TouchableOpacity>
+            {isPro && (
+              <TouchableOpacity
+                style={[styles.imagePickerButton, { borderColor: colors.accent, marginTop: 8 }]}
+                onPress={() => setShowGifPicker(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Choose a GIF image"
+              >
+                <Text
+                  style={[styles.imagePickerText, { color: colors.accent }]}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                >
+                  Choose GIF
+                </Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </>
         )}
       </View>
 
@@ -1322,6 +1571,13 @@ export function EditorScreen({
           </Text>
         </TouchableOpacity>
       </View>
+
+      <GifPicker
+        visible={showGifPicker}
+        colors={colors}
+        onSelect={(url) => { setCustomImage(url); setShowGifPicker(false); }}
+        onClose={() => setShowGifPicker(false)}
+      />
     </ScrollView>
   );
 }

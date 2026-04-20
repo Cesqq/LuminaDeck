@@ -7,6 +7,7 @@ import type { ButtonConfig } from '@luminadeck/shared';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { ConnectionProvider, useConnection } from './src/contexts/ConnectionContext';
 import { ProProvider } from './src/contexts/ProContext';
+import { ProfileProvider } from './src/contexts/ProfileContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -257,11 +258,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <ConnectionProvider>
-          <ProProvider>
-            <AppContent />
-          </ProProvider>
-        </ConnectionProvider>
+        <ProfileProvider>
+          <ConnectionProvider>
+            <ProProvider>
+              <AppContent />
+            </ProProvider>
+          </ConnectionProvider>
+        </ProfileProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
