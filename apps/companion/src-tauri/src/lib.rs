@@ -269,10 +269,8 @@ pub fn run() {
                 let mut obs = plugins::obs::ObsPlugin::new();
                 let mut discord = plugins::discord::DiscordPlugin::new();
 
-                // Init runs async; use block_on inside setup since we're
-                // already on the main thread before the event loop starts.
-                let rt = tokio::runtime::Handle::current();
-                rt.block_on(async {
+                // Init plugins asynchronously via Tauri's runtime
+                tauri::async_runtime::block_on(async {
                     if let Err(e) = obs.init().await {
                         log::warn!("OBS plugin init error: {}", e);
                     }

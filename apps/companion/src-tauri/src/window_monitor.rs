@@ -39,7 +39,7 @@ impl WindowMonitor {
     pub fn start(&self, app_handle: AppHandle) {
         let last = self.last_process.clone();
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let mut interval =
                 tokio::time::interval(std::time::Duration::from_millis(POLL_INTERVAL_MS));
 
