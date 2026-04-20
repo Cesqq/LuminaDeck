@@ -7,622 +7,750 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg: #0D0D0D;
-      --surface: #1A1A2E;
-      --border: #16213E;
-      --accent: #0F3460;
-      --accent-bright: #00D4FF;
-      --text: #E0E0E0;
-      --text-secondary: #888;
-      --green: #4CAF50;
-      --yellow: #FFC107;
-      --red: #F44336;
+      --bg: #0c0c14;
+      --sidebar: #12121e;
+      --surface: #1a1a2e;
+      --surface-hover: #222240;
+      --border: #2a2a45;
+      --accent: #6c5ce7;
+      --accent-glow: rgba(108,92,231,0.15);
+      --accent-bright: #a29bfe;
+      --text: #e8e8f0;
+      --text-secondary: #6b6b8a;
+      --text-dim: #4a4a65;
+      --green: #00b894;
+      --yellow: #fdcb6e;
+      --red: #d63031;
+      --radius: 10px;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
       user-select: none;
       -webkit-user-select: none;
     }
 
-    /* Header */
-    .header {
-      padding: 20px 24px 12px;
-    }
-    .header h1 {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 2px;
-    }
-    .header .subtitle {
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    /* Tabs */
-    .tabs {
+    /* ── Sidebar ─────────────────────── */
+    .sidebar {
+      width: 200px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
       display: flex;
-      border-bottom: 1px solid var(--border);
-      padding: 0 24px;
+      flex-direction: column;
+      padding: 16px 0;
+      flex-shrink: 0;
     }
-    .tab {
-      flex: 1;
-      padding: 10px 0;
-      text-align: center;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s;
-    }
-    .tab.active {
-      color: var(--accent-bright);
-      border-bottom-color: var(--accent-bright);
-    }
-    .tab:hover:not(.active) {
-      color: var(--text);
-    }
-
-    /* Content */
-    .content {
-      flex: 1;
-      padding: 20px 24px;
-      overflow-y: auto;
-    }
-    .panel { display: none; }
-    .panel.active { display: block; }
-
-    /* Status card */
-    .status-card {
+    .sidebar-brand {
+      padding: 8px 20px 24px;
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 14px 16px;
-      background: var(--surface);
-      border-radius: 10px;
-      border: 1px solid var(--border);
+    }
+    .sidebar-brand .logo {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .sidebar-brand .name {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .sidebar-brand .ver {
+      font-size: 9px;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+    .nav-section {
+      padding: 0 12px;
       margin-bottom: 20px;
     }
+    .nav-label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-dim);
+      padding: 0 8px 8px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+    .nav-item:hover { background: var(--surface); color: var(--text); }
+    .nav-item.active {
+      background: var(--accent-glow);
+      color: var(--accent-bright);
+      font-weight: 600;
+    }
+    .nav-item .icon { font-size: 15px; width: 20px; text-align: center; }
+    .nav-item .badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+
+    /* ── Status indicator in sidebar ── */
+    .sidebar-status {
+      margin-top: auto;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
     .status-dot {
-      width: 10px;
-      height: 10px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+    .status-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    /* ── Main content ────────────────── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .topbar {
+      height: 48px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 12px;
       flex-shrink: 0;
     }
-    .status-dot.running { background: var(--green); }
-    .status-dot.waiting { background: var(--yellow); }
-    .status-dot.error { background: var(--red); }
-    .status-text { font-size: 13px; font-weight: 500; }
-    .status-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
-
-    /* Section */
-    .section-title {
-      font-size: 11px;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 10px;
+    .topbar-title {
+      font-size: 15px;
       font-weight: 700;
     }
-    .section { margin-bottom: 24px; }
-
-    /* QR Container */
-    .qr-container {
-      background: #FFFFFF;
-      border-radius: 12px;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 12px;
+    .topbar-sub {
+      font-size: 11px;
+      color: var(--text-dim);
     }
-    .qr-container canvas { display: block; }
-    .qr-hint {
-      font-size: 12px;
-      color: var(--text-secondary);
-      text-align: center;
-      line-height: 1.5;
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
     }
 
-    /* IP Info */
-    .ip-card {
+    /* ── Page panels ─────────────────── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Cards ────────────────────────── */
+    .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 16px;
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 16px;
     }
-    .ip-row {
+    .card-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 6px 0;
+      justify-content: space-between;
+      margin-bottom: 14px;
     }
-    .ip-row:not(:last-child) {
-      border-bottom: 1px solid var(--border);
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-secondary);
     }
-    .ip-label { font-size: 12px; color: var(--text-secondary); }
-    .ip-value {
-      font-size: 14px;
-      font-weight: 600;
-      font-family: 'SF Mono', 'Consolas', monospace;
+    .card-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
     }
-    .copy-btn {
+    .badge-green { background: rgba(0,184,148,0.15); color: var(--green); }
+    .badge-red { background: rgba(214,48,49,0.15); color: var(--red); }
+    .badge-yellow { background: rgba(253,203,110,0.15); color: var(--yellow); }
+
+    /* ── Stats grid ───────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent-bright);
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 4px;
+    }
+
+    /* ── Info rows ────────────────────── */
+    .info-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { font-size: 12px; color: var(--text-secondary); }
+    .info-value { font-size: 13px; font-weight: 600; font-family: 'SF Mono', 'Fira Code', monospace; }
+    .btn-copy {
       background: var(--accent);
       border: none;
-      color: var(--text);
-      font-size: 11px;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
       padding: 4px 10px;
-      border-radius: 6px;
+      border-radius: 5px;
       cursor: pointer;
-      font-weight: 600;
       margin-left: 8px;
     }
-    .copy-btn:hover { opacity: 0.8; }
+    .btn-copy:hover { opacity: 0.85; }
 
-    /* Device list */
-    .device-list { list-style: none; }
-    .device-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
+    /* ── Plugin cards ─────────────────── */
+    .plugin-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      margin-bottom: 8px;
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
     }
-    .device-info { flex: 1; }
-    .device-name { font-size: 14px; font-weight: 600; }
-    .device-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
-    .device-remove {
+    .plugin-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .plugin-info { flex: 1; }
+    .plugin-name { font-size: 13px; font-weight: 700; }
+    .plugin-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .plugin-status {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    /* ── Device cards ─────────────────── */
+    .device-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .device-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .device-details { flex: 1; }
+    .device-name { font-size: 13px; font-weight: 600; }
+    .device-meta { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+    .btn-remove {
       background: none;
       border: 1px solid var(--red);
       color: var(--red);
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 600;
       padding: 4px 10px;
       border-radius: 6px;
       cursor: pointer;
-      font-weight: 600;
     }
-    .device-remove:hover { background: rgba(244, 67, 54, 0.15); }
+    .btn-remove:hover { background: rgba(214,48,49,0.1); }
 
-    .empty-state {
-      text-align: center;
-      padding: 32px 16px;
-      color: var(--text-secondary);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    /* Settings items */
-    .setting-item {
+    /* ── QR section ───────────────────── */
+    .qr-section {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border);
+      gap: 24px;
     }
-    .setting-label { font-size: 13px; }
-    .setting-value { font-size: 13px; color: var(--text-secondary); font-family: monospace; }
-
-    /* Footer */
-    .footer {
-      padding: 12px 24px;
-      text-align: center;
+    .qr-canvas { border-radius: 12px; overflow: hidden; }
+    .qr-instructions { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+    .qr-step { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
       font-size: 10px;
-      color: var(--text-secondary);
-      border-top: 1px solid var(--border);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
+
+    /* ── Empty state ──────────────────── */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    /* ── Settings rows ────────────────── */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-key { font-size: 12px; color: var(--text-secondary); }
+    .setting-val { font-size: 12px; font-weight: 600; }
   </style>
-  <!-- QR Code library - small, no external deps -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body>
-  <div class="header">
-    <h1>LuminaDeck Studio</h1>
-    <p class="subtitle" id="header-subtitle">Starting...</p>
-  </div>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="status">Status</div>
-    <div class="tab" data-tab="pair">Pair</div>
-    <div class="tab" data-tab="devices">Devices</div>
-    <div class="tab" data-tab="plugins">Plugins</div>
-    <div class="tab" data-tab="settings">Settings</div>
-  </div>
-
-  <div class="content">
-    <!-- Status Panel -->
-    <div class="panel active" id="panel-status">
-      <div class="status-card">
-        <div class="status-dot waiting" id="status-dot"></div>
-        <div>
-          <div class="status-text" id="status-text">Initializing...</div>
-          <div class="status-sub" id="status-sub">Preparing server</div>
-        </div>
+  <!-- ── Sidebar ──────────────────── -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">⬡</div>
+      <div>
+        <div class="name">LuminaDeck</div>
       </div>
+      <span class="ver">v1.0</span>
+    </div>
 
-      <div class="section">
-        <div class="section-title">Connection Info</div>
-        <div class="ip-card">
-          <div class="ip-row">
-            <span class="ip-label">Local IP</span>
-            <span>
-              <span class="ip-value" id="local-ip">—</span>
-              <button class="copy-btn" onclick="copyText('local-ip')">Copy</button>
-            </span>
-          </div>
-          <div class="ip-row">
-            <span class="ip-label">Port</span>
-            <span class="ip-value" id="local-port">9876</span>
-          </div>
-          <div class="ip-row">
-            <span class="ip-label">Connected</span>
-            <span class="ip-value" id="connected-count">0</span>
-          </div>
-        </div>
+    <div class="nav-section">
+      <div class="nav-label">General</div>
+      <div class="nav-item active" data-page="dashboard">
+        <span class="icon">◉</span> Dashboard
       </div>
-
-      <div class="section">
-        <div class="section-title">Certificate</div>
-        <div class="ip-card">
-          <div class="ip-row">
-            <span class="ip-label">Fingerprint (SHA-256)</span>
-          </div>
-          <div class="ip-row">
-            <span class="ip-value" id="cert-fingerprint" style="font-size: 11px; word-break: break-all;">—</span>
-          </div>
-        </div>
+      <div class="nav-item" data-page="pair">
+        <span class="icon">⊞</span> Pair Device
+      </div>
+      <div class="nav-item" data-page="devices">
+        <span class="icon">☰</span> Devices
+        <span class="badge" id="device-badge" style="display:none">0</span>
       </div>
     </div>
 
-    <!-- Pair Panel -->
-    <div class="panel" id="panel-pair">
-      <div class="section">
-        <div class="section-title">Scan QR Code</div>
-        <div class="qr-container" id="qr-container">
-          <div style="color: #333; font-size: 13px;">Loading...</div>
-        </div>
-        <p class="qr-hint">
-          Open LuminaDeck on your iPhone, go to <strong>Connect</strong>,
-          and tap <strong>Scan QR Code</strong>
-        </p>
-      </div>
-
-      <div class="section">
-        <div class="section-title">Or Enter Manually</div>
-        <div class="ip-card">
-          <div class="ip-row">
-            <span class="ip-label">IP Address</span>
-            <span>
-              <span class="ip-value" id="manual-ip">—</span>
-              <button class="copy-btn" onclick="copyText('manual-ip')">Copy</button>
-            </span>
-          </div>
-          <div class="ip-row">
-            <span class="ip-label">Port</span>
-            <span class="ip-value">9876</span>
-          </div>
-        </div>
+    <div class="nav-section">
+      <div class="nav-label">Integrations</div>
+      <div class="nav-item" data-page="plugins">
+        <span class="icon">⚡</span> Plugins
       </div>
     </div>
 
-    <!-- Devices Panel -->
-    <div class="panel" id="panel-devices">
-      <div class="section">
-        <div class="section-title">Connected Devices</div>
-        <div id="connected-devices-list">
-          <div class="empty-state">No devices connected right now.</div>
-        </div>
-      </div>
-      <div class="section">
-        <div class="section-title">Paired Devices</div>
-        <div id="device-list">
-          <div class="empty-state">
-            No devices paired yet.<br/>
-            Go to the <strong>Pair</strong> tab to connect your iPhone.
-          </div>
-        </div>
+    <div class="nav-section">
+      <div class="nav-label">System</div>
+      <div class="nav-item" data-page="settings">
+        <span class="icon">⚙</span> Settings
       </div>
     </div>
 
-    <!-- Plugins Panel -->
-    <div class="panel" id="panel-plugins">
-      <div class="section">
-        <div class="section-title">Integrations</div>
-        <div class="setting-item">
-          <div>
-            <span class="setting-label">OBS Studio</span>
-            <div style="font-size: 11px; color: var(--text-secondary);">Scene switching, recording, streaming</div>
-          </div>
-          <span id="obs-status" style="font-size: 11px; font-weight: 700; color: var(--status-red);">Not Connected</span>
-        </div>
-        <div class="setting-item">
-          <div>
-            <span class="setting-label">Discord</span>
-            <div style="font-size: 11px; color: var(--text-secondary);">Mute, deafen via hotkeys (Ctrl+Shift+M/D)</div>
-          </div>
-          <span style="font-size: 11px; font-weight: 700; color: var(--status-green);">Available</span>
-        </div>
+    <div class="sidebar-status">
+      <div class="status-row">
+        <div class="status-dot" id="sidebar-dot"></div>
+        <span id="sidebar-status-text" style="color:var(--text-secondary)">Starting...</span>
       </div>
-      <div class="section">
-        <div class="section-title">Window Monitor</div>
-        <div class="setting-item">
-          <span class="setting-label">Active Window</span>
-          <span id="active-window" class="setting-value" style="font-size: 11px;">—</span>
-        </div>
-        <div style="font-size: 11px; color: var(--text-secondary); padding: 8px 0;">
-          Tracks the foreground window for auto-profile switching. The active process name is sent to connected phones every 2 seconds.
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Panel -->
-    <div class="panel" id="panel-settings">
-      <div class="section">
-        <div class="section-title">Server</div>
-        <div class="setting-item">
-          <span class="setting-label">Port</span>
-          <span class="setting-value">9876</span>
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">TLS</span>
-          <span class="setting-value">1.3 (self-signed)</span>
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">Max Devices</span>
-          <span class="setting-value">5</span>
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">Rate Limit</span>
-          <span class="setting-value">50 actions/sec</span>
-        </div>
-      </div>
-      <div class="section">
-        <div class="section-title">About</div>
-        <div class="setting-item">
-          <span class="setting-label">App</span>
-          <span class="setting-value">LuminaDeck Studio</span>
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">Version</span>
-          <span class="setting-value">1.0.0</span>
-        </div>
-        <div class="setting-item">
-          <span class="setting-label">Protocol</span>
-          <span class="setting-value">1.1.0</span>
-        </div>
-      </div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:6px" id="sidebar-ip">—</div>
     </div>
   </div>
 
-  <div class="footer">
-    LuminaDeck Studio v1.0.0 &mdash; Listening on ports 9876 (TLS) &amp; 9877 (WS)
+  <!-- ── Main ─────────────────────── -->
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">Dashboard</span>
+      <span class="topbar-sub" id="topbar-sub"></span>
+    </div>
+
+    <div class="content">
+
+      <!-- ── Dashboard ────────────── -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-connected">0</div>
+            <div class="stat-label">Connected</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-paired">0</div>
+            <div class="stat-label">Paired</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-actions">0</div>
+            <div class="stat-label">Actions</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Server</span>
+            <span class="card-badge badge-green" id="server-badge">Running</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Local IP</span>
+            <span><span class="info-value" id="local-ip">—</span><button class="btn-copy" onclick="copyText('local-ip')">Copy</button></span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Ports</span>
+            <span class="info-value">9876 (TLS) · 9877 (WS)</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Certificate</span>
+            <span class="info-value" id="cert-fp" style="font-size:10px;max-width:280px;overflow:hidden;text-overflow:ellipsis">—</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Active Window</span>
+          </div>
+          <div style="font-size:14px;font-weight:600" id="active-window">—</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Used for auto-profile switching</div>
+        </div>
+      </div>
+
+      <!-- ── Pair Device ──────────── -->
+      <div class="page" id="page-pair">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">QR Code Pairing</span>
+          </div>
+          <div class="qr-section">
+            <div class="qr-canvas" id="qr-container">
+              <div class="empty">Generating...</div>
+            </div>
+            <div class="qr-instructions">
+              <div class="qr-step"><span class="step-num">1</span> Open LuminaDeck on your phone</div>
+              <div class="qr-step"><span class="step-num">2</span> Tap "Scan QR Code" on the connection screen</div>
+              <div class="qr-step"><span class="step-num">3</span> Point your camera at this code</div>
+              <div style="margin-top:12px;font-size:11px;color:var(--text-dim)">
+                Or connect manually: <strong id="manual-ip" style="color:var(--text)">—</strong> port <strong style="color:var(--text)">9877</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Devices ──────────────── -->
+      <div class="page" id="page-devices">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Connected Now</span>
+          </div>
+          <div id="connected-devices-list">
+            <div class="empty">No devices connected</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Paired Devices</span>
+          </div>
+          <div id="device-list">
+            <div class="empty">No paired devices</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Plugins ──────────────── -->
+      <div class="page" id="page-plugins">
+        <div class="plugin-card">
+          <div class="plugin-icon" style="background:rgba(108,92,231,0.15)">🎬</div>
+          <div class="plugin-info">
+            <div class="plugin-name">OBS Studio</div>
+            <div class="plugin-desc">Scene switching, recording, streaming control via WebSocket v5</div>
+          </div>
+          <span class="plugin-status badge-red" id="obs-status">Not Connected</span>
+        </div>
+
+        <div class="plugin-card">
+          <div class="plugin-icon" style="background:rgba(88,101,242,0.15)">💬</div>
+          <div class="plugin-info">
+            <div class="plugin-name">Discord</div>
+            <div class="plugin-desc">Toggle mute &amp; deafen via keyboard shortcuts (Ctrl+Shift+M/D)</div>
+          </div>
+          <span class="plugin-status badge-green">Available</span>
+        </div>
+
+        <div class="plugin-card">
+          <div class="plugin-icon" style="background:rgba(0,184,148,0.15)">🪟</div>
+          <div class="plugin-info">
+            <div class="plugin-name">Window Monitor</div>
+            <div class="plugin-desc">Detects active application for auto-profile switching</div>
+          </div>
+          <span class="plugin-status badge-green">Active</span>
+        </div>
+
+        <div class="plugin-card">
+          <div class="plugin-icon" style="background:rgba(253,203,110,0.15)">⌨️</div>
+          <div class="plugin-info">
+            <div class="plugin-name">SendInput Engine</div>
+            <div class="plugin-desc">140+ key codes, Unicode text input, system actions</div>
+          </div>
+          <span class="plugin-status badge-green">Active</span>
+        </div>
+
+        <div style="margin-top:20px">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Active Window</span>
+            </div>
+            <div style="font-size:14px;font-weight:600" id="active-window-plugins">—</div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Polling foreground window every 2 seconds</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Settings ─────────────── -->
+      <div class="page" id="page-settings">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Server</span></div>
+          <div class="setting-row"><span class="setting-key">TLS Port</span><span class="setting-val">9876</span></div>
+          <div class="setting-row"><span class="setting-key">WebSocket Port</span><span class="setting-val">9877</span></div>
+          <div class="setting-row"><span class="setting-key">TLS Version</span><span class="setting-val">1.3 (self-signed)</span></div>
+          <div class="setting-row"><span class="setting-key">Rate Limit</span><span class="setting-val">50 actions/sec</span></div>
+          <div class="setting-row"><span class="setting-key">Max Devices</span><span class="setting-val">5</span></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">About</span></div>
+          <div class="setting-row"><span class="setting-key">Application</span><span class="setting-val">LuminaDeck Studio</span></div>
+          <div class="setting-row"><span class="setting-key">Version</span><span class="setting-val">1.0.0</span></div>
+          <div class="setting-row"><span class="setting-key">Protocol</span><span class="setting-val">1.1.0</span></div>
+          <div class="setting-row"><span class="setting-key">Engine</span><span class="setting-val">Tauri v2 + Rust</span></div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
   <script type="module">
     const { invoke } = window.__TAURI__.core;
     const { listen } = window.__TAURI__.event;
 
-    // --- Tab switching ---
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    // ── Navigation ──────────────────
+    const navItems = document.querySelectorAll('.nav-item[data-page]');
+    const pages = document.querySelectorAll('.page');
+    const topTitle = document.getElementById('topbar-title');
+    const topSub = document.getElementById('topbar-sub');
+
+    const pageTitles = {
+      dashboard: 'Dashboard',
+      pair: 'Pair Device',
+      devices: 'Devices',
+      plugins: 'Plugins',
+      settings: 'Settings',
+    };
+
+    navItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.dataset.page;
+        navItems.forEach(n => n.classList.remove('active'));
+        pages.forEach(p => p.classList.remove('active'));
+        item.classList.add('active');
+        document.getElementById('page-' + page).classList.add('active');
+        topTitle.textContent = pageTitles[page] || page;
       });
     });
 
-    // --- Copy to clipboard ---
-    window.copyText = function(elementId) {
-      const text = document.getElementById(elementId)?.textContent;
-      if (text && text !== '—') {
-        navigator.clipboard.writeText(text).then(() => {
-          const btn = event.target;
-          btn.textContent = 'Copied!';
-          setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
-        });
-      }
+    // ── Copy ────────────────────────
+    window.copyText = function(id) {
+      const text = document.getElementById(id)?.textContent;
+      if (text && text !== '—') navigator.clipboard.writeText(text);
     };
 
-    // --- Refresh server info ---
+    // ── Server info ─────────────────
+    let totalActions = 0;
+
     async function refreshInfo() {
       try {
         const info = await invoke('get_server_info');
-
-        // Status
-        const dot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
-        const statusSub = document.getElementById('status-sub');
-        const subtitle = document.getElementById('header-subtitle');
-
-        if (info.status === 'running') {
-          dot.className = 'status-dot running';
-          statusText.textContent = 'Server running';
-          statusSub.textContent = `Listening on ${info.ip}:${info.port}`;
-          subtitle.textContent = info.connected_devices > 0
-            ? `${info.connected_devices} device(s) connected`
-            : 'Waiting for iPhone connection...';
-        }
-
-        // Connection info
         document.getElementById('local-ip').textContent = info.ip;
-        document.getElementById('local-port').textContent = String(info.port);
-        document.getElementById('connected-count').textContent = String(info.connected_devices);
         document.getElementById('manual-ip').textContent = info.ip;
+        document.getElementById('sidebar-ip').textContent = `${info.ip}:9877`;
+        document.getElementById('stat-connected').textContent = String(info.connected_devices);
+        document.getElementById('stat-paired').textContent = String(info.paired_count);
+        document.getElementById('cert-fp').textContent = info.cert_fingerprint || '—';
 
-        // Cert fingerprint
-        if (info.cert_fingerprint) {
-          document.getElementById('cert-fingerprint').textContent = info.cert_fingerprint;
+        const dot = document.getElementById('sidebar-dot');
+        const stxt = document.getElementById('sidebar-status-text');
+        if (info.status === 'running') {
+          dot.className = 'status-dot';
+          stxt.textContent = info.connected_devices > 0
+            ? `${info.connected_devices} connected`
+            : 'Waiting...';
         }
-      } catch (e) {
-        console.error('Failed to get server info:', e);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // --- Generate QR code ---
+    // ── QR code ─────────────────────
     async function generateQR() {
       try {
         const data = await invoke('get_qr_pairing_data');
         const container = document.getElementById('qr-container');
         container.innerHTML = '';
-
-        // Generate QR code
         const qr = qrcode(0, 'M');
         qr.addData(data.json);
         qr.make();
-
-        // Render to canvas
-        const size = 200;
+        const size = 180;
         const canvas = document.createElement('canvas');
         canvas.width = size;
         canvas.height = size;
+        canvas.style.borderRadius = '12px';
         const ctx = canvas.getContext('2d');
-        const moduleCount = qr.getModuleCount();
-        const cellSize = size / moduleCount;
-
+        const mc = qr.getModuleCount();
+        const cs = size / mc;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
-
         ctx.fillStyle = '#000000';
-        for (let row = 0; row < moduleCount; row++) {
-          for (let col = 0; col < moduleCount; col++) {
-            if (qr.isDark(row, col)) {
-              ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
-            }
-          }
-        }
-
+        for (let r = 0; r < mc; r++)
+          for (let c = 0; c < mc; c++)
+            if (qr.isDark(r, c))
+              ctx.fillRect(c * cs, r * cs, cs, cs);
         container.appendChild(canvas);
       } catch (e) {
-        console.error('QR generation failed:', e);
-        document.getElementById('qr-container').innerHTML =
-          '<div style="color: #333; font-size: 13px;">Failed to generate QR code</div>';
+        document.getElementById('qr-container').innerHTML = '<div class="empty">QR failed</div>';
       }
     }
 
-    // --- Refresh device list ---
+    // ── Devices ─────────────────────
     async function refreshDevices() {
       try {
         const devices = await invoke('get_paired_devices');
         const container = document.getElementById('device-list');
-
         if (devices.length === 0) {
-          container.innerHTML = `
-            <div class="empty-state">
-              No devices paired yet.<br/>
-              Go to the <strong>Pair</strong> tab to connect your iPhone.
-            </div>`;
+          container.innerHTML = '<div class="empty">No paired devices</div>';
           return;
         }
-
         container.innerHTML = devices.map(d => `
-          <div class="device-item">
-            <div class="device-info">
-              <div class="device-name">${escapeHtml(d.name)}</div>
-              <div class="device-meta">Paired: ${d.paired_at}${d.last_seen ? ' &bull; Last seen: ' + d.last_seen : ''}</div>
+          <div class="device-card">
+            <div class="device-avatar">📱</div>
+            <div class="device-details">
+              <div class="device-name">${esc(d.name)}</div>
+              <div class="device-meta">Paired ${d.paired_at}</div>
             </div>
-            <button class="device-remove" onclick="removeDevice('${escapeHtml(d.id)}')">Remove</button>
+            <button class="btn-remove" onclick="removeDevice('${esc(d.id)}')">Remove</button>
           </div>
         `).join('');
-      } catch (e) {
-        console.error('Failed to load devices:', e);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    window.removeDevice = async function(deviceId) {
-      try {
-        await invoke('remove_paired_device', { deviceId });
-        refreshDevices();
-      } catch (e) {
-        console.error('Failed to remove device:', e);
-      }
+    window.removeDevice = async function(id) {
+      try { await invoke('remove_paired_device', { deviceId: id }); refreshDevices(); } catch (e) { console.error(e); }
     };
 
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-    // --- Connected devices tracking ---
-    const connectedDevices = new Map(); // peer -> { name, id, protocol }
+    // ── Connected devices ───────────
+    const connectedDevices = new Map();
 
-    function renderConnectedDevices() {
+    function renderConnected() {
       const container = document.getElementById('connected-devices-list');
+      const badge = document.getElementById('device-badge');
       if (connectedDevices.size === 0) {
-        container.innerHTML = '<div class="empty-state">No devices connected right now.</div>';
+        container.innerHTML = '<div class="empty">No devices connected</div>';
+        badge.style.display = 'none';
         return;
       }
+      badge.textContent = String(connectedDevices.size);
+      badge.style.display = '';
       container.innerHTML = '';
       for (const [peer, info] of connectedDevices) {
         const card = document.createElement('div');
-        card.className = 'setting-item';
+        card.className = 'device-card';
         card.innerHTML = `
-          <div>
-            <strong style="color: var(--text)">${escapeHtml(info.name)}</strong>
-            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
-              ${escapeHtml(peer)} &middot; Protocol v${escapeHtml(info.protocol)}
-            </div>
+          <div class="device-avatar" style="border-color:var(--green)">📱</div>
+          <div class="device-details">
+            <div class="device-name">${esc(info.name)}</div>
+            <div class="device-meta">${esc(peer)} · Protocol v${esc(info.protocol)}</div>
           </div>
-          <span style="color: var(--accent); font-size: 11px; font-weight: 700;">CONNECTED</span>
+          <span class="plugin-status badge-green">Live</span>
         `;
         container.appendChild(card);
       }
     }
 
-    // --- Listen for device identification ---
-    listen('device-identified', (event) => {
-      const { device_name, device_id, peer, protocol_version } = event.payload;
-      console.log(`[Event] Device identified: ${device_name} (${peer})`);
+    // ── Events ──────────────────────
+    listen('device-identified', (e) => {
+      const { device_name, device_id, peer, protocol_version } = e.payload;
       connectedDevices.set(peer, { name: device_name, id: device_id, protocol: protocol_version });
-      renderConnectedDevices();
+      renderConnected();
     });
 
-    // --- Listen for real-time connection events ---
-    listen('connection-change', (event) => {
-      const { event_type, peer, active_count } = event.payload;
-      console.log(`[Event] ${event_type}: ${peer} (active: ${active_count})`);
-
-      if (event_type === 'disconnected') {
-        connectedDevices.delete(peer);
-        renderConnectedDevices();
-      }
-
-      // Update connected count immediately
-      const countEl = document.getElementById('connected-count');
-      if (countEl) countEl.textContent = String(active_count);
-
-      // Update header subtitle
-      const subtitle = document.getElementById('header-subtitle');
-      if (active_count > 0) {
-        subtitle.textContent = `${active_count} device(s) connected`;
-      } else {
-        subtitle.textContent = 'Waiting for connection...';
-      }
-
+    listen('connection-change', (e) => {
+      const { event_type, peer, active_count } = e.payload;
+      if (event_type === 'disconnected') { connectedDevices.delete(peer); renderConnected(); }
+      document.getElementById('stat-connected').textContent = String(active_count);
+      const stxt = document.getElementById('sidebar-status-text');
+      stxt.textContent = active_count > 0 ? `${active_count} connected` : 'Waiting...';
       refreshInfo();
     });
 
-    // --- Listen for active window changes ---
-    listen('active-window-change', (event) => {
-      const { process_name, window_title } = event.payload;
-      const el = document.getElementById('active-window');
-      if (el) el.textContent = process_name || '—';
+    listen('active-window-change', (e) => {
+      const { process_name } = e.payload;
+      const el1 = document.getElementById('active-window');
+      const el2 = document.getElementById('active-window-plugins');
+      if (el1) el1.textContent = process_name || '—';
+      if (el2) el2.textContent = process_name || '—';
     });
 
-    // --- Initialize ---
+    // ── Init ────────────────────────
     refreshInfo();
     generateQR();
     refreshDevices();
-
-    // Poll for updates (less frequent now that we have events)
     setInterval(refreshInfo, 10000);
     setInterval(refreshDevices, 30000);
   </script>
