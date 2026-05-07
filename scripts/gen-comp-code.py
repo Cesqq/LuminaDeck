@@ -42,12 +42,24 @@ GROUP_LEN = 4
 VALID_TIERS = ("lifetime", "pro_1y", "pro_30d")
 
 
-def generate_code() -> str:
+def generate_code() -> tuple[str, str]:
+    """
+    Returns (display_form, canonical_form).
+    - display_form is the human-readable LUMI-XXXX-XXXX-XXXX (printed to the user)
+    - canonical_form is dash-free uppercase (what we INSERT into Postgres)
+
+    The edge function normalizes incoming codes by stripping non-alphanumerics
+    and uppercasing, then matches against the stored value. If we stored the
+    dashed form, the lookup wouldn't match the stripped client payload — see
+    bug fixed 2026-05-08.
+    """
     groups = [
         "".join(secrets.choice(ALPHABET) for _ in range(GROUP_LEN))
         for _ in range(CODE_GROUPS)
     ]
-    return f"{PREFIX}-{'-'.join(groups)}"
+    display = f"{PREFIX}-{'-'.join(groups)}"
+    canonical = display.replace("-", "")
+    return display, canonical
 
 
 def load_env_file(path: Path) -> dict:
@@ -130,15 +142,17 @@ def main() -> int:
 
     minted: list[str] = []
     for i in range(args.count):
-        code = generate_code()
+        display, canonical = generate_code()
         if args.dry_run:
-            minted.append(code)
+            minted.append(display)
             continue
 
+        # Insert the CANONICAL (dash-free) form so the edge function's
+        # normalize-then-match lookup hits exactly.
         ok, info = insert_code(
             supabase_url=supabase_url,
             service_key=service_key,
-            code=code,
+            code=canonical,
             tier=args.tier,
             max_redemptions=args.max_redemptions,
             expires_at=expires_at,
@@ -146,9 +160,11 @@ def main() -> int:
             created_by=args.created_by,
         )
         if not ok:
-            print(f"FAIL  {code}  → {info}", file=sys.stderr)
+            print(f"FAIL  {display}  → {info}", file=sys.stderr)
             return 1
-        minted.append(code)
+        # User sees the readable dashed form; the DB has the canonical form.
+        # The redeem flow accepts either (modal strips dashes before sending).
+        minted.append(display)
 
     print()
     print(f"  Tier:            {args.tier}")
