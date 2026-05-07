@@ -10,9 +10,13 @@
     "test:watch": "vitest",
     "lint": "echo 'no lint configured yet'"
   },
-  "devDependencies": {
-    "typescript": "^5.8.0",
-    "vitest": "^3.0.0",
+  "dependencies": {
+    "semver": "^7.6.0",
     "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/semver": "^7.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
   }
 }

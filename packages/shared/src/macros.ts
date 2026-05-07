@@ -92,3 +92,24 @@ export const MACRO_LIMITS = {
   maxDescriptionLength: 200,
   maxNestedDepth: 3,
 } as const;
+
+// --- Persistence helpers ---
+
+/**
+ * Merge a freshly-loaded macro list into whatever state the user may have
+ * already touched while the load was in flight. Without this, a user who
+ * creates a macro before AsyncStorage finishes its read gets their work
+ * silently overwritten when the late-arriving load setter fires.
+ *
+ * Conflict policy: current state wins on ID conflicts (the user's just-edited
+ * macro is the source of truth). Stored macros not present in current state
+ * get appended.
+ */
+export function mergeStoredMacros(
+  current: MacroConfig[],
+  stored: MacroConfig[],
+): MacroConfig[] {
+  if (current.length === 0) return stored;
+  const currentIds = new Set(current.map((m) => m.id));
+  return [...current, ...stored.filter((s) => !currentIds.has(s.id))];
+}

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   PROTOCOL_VERSION,
+  MIN_CLIENT_PROTOCOL,
+  MIN_FEATURE_PROFILE_UPDATE,
+  isClientCompatible,
   HEARTBEAT_INTERVAL_MS,
   HEARTBEAT_MISS_THRESHOLD,
   RECONNECT_DELAYS_MS,
@@ -11,8 +14,28 @@ import {
 } from './protocol';
 
 describe('Protocol Constants', () => {
-  it('has protocol version 1.1.0', () => {
-    expect(PROTOCOL_VERSION).toBe('1.1.0');
+  it('has protocol version 1.5.0', () => {
+    expect(PROTOCOL_VERSION).toBe('1.5.0');
+  });
+
+  it('accepts v1.1.0+ clients but not v2.x', () => {
+    expect(isClientCompatible('1.1.0', MIN_CLIENT_PROTOCOL)).toBe(true);
+    expect(isClientCompatible('1.1.5', MIN_CLIENT_PROTOCOL)).toBe(true);
+    expect(isClientCompatible('1.2.0', MIN_CLIENT_PROTOCOL)).toBe(true);
+    expect(isClientCompatible('1.10.0', MIN_CLIENT_PROTOCOL)).toBe(true);
+    expect(isClientCompatible('1.0.0', MIN_CLIENT_PROTOCOL)).toBe(false);
+    expect(isClientCompatible('2.0.0', MIN_CLIENT_PROTOCOL)).toBe(false);
+  });
+
+  it('only v1.2.0+ clients receive profile_update pushes', () => {
+    expect(isClientCompatible('1.1.5', MIN_FEATURE_PROFILE_UPDATE)).toBe(false);
+    expect(isClientCompatible('1.2.0', MIN_FEATURE_PROFILE_UPDATE)).toBe(true);
+    expect(isClientCompatible('1.3.0', MIN_FEATURE_PROFILE_UPDATE)).toBe(true);
+  });
+
+  it('isClientCompatible handles malformed versions without throwing', () => {
+    expect(isClientCompatible('not-a-version', MIN_CLIENT_PROTOCOL)).toBe(false);
+    expect(isClientCompatible('', MIN_CLIENT_PROTOCOL)).toBe(false);
   });
 
   it('heartbeat interval is 2 seconds', () => {
@@ -77,6 +100,7 @@ describe('Protocol Types', () => {
       ip: '192.168.1.100',
       port: 9876,
       certFingerprint: 'abc123',
+      pairingSecret: '12345678-1234-4234-8234-123456789abc',
       companionName: 'My PC',
       version: '1.0.0',
     };

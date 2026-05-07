@@ -32,7 +32,7 @@ export const appLaunchSchema = z.object({
       'Path must not contain ".." or "~" (directory traversal prevention)',
     )
     .refine(
-      (p) => /\.(exe|lnk|bat|cmd|msc|cpl)$/i.test(p),
+      (p) => /\.(exe|lnk|msc|cpl)$/i.test(p),
       'Path must end with a valid executable extension',
     ),
   args: z.array(z.string().max(1024)).max(10).optional(),
@@ -101,6 +101,16 @@ export const macroActionSchema = z.object({
   macroName: z.string().min(1).max(64),
 });
 
+export const trackpadActionSchema = z.object({
+  type: z.literal('trackpad'),
+  /** 0.5x slow → 2x fast. Default 1.0 if absent. */
+  sensitivity: z.number().min(0.25).max(4.0).optional(),
+  naturalScroll: z.boolean().optional(),
+  haptics: z.boolean().optional(),
+  accelCurve: z.enum(['linear', 'classic']).optional(),
+  lockToPrimary: z.boolean().optional(),
+});
+
 export const multiActionSchema = z.object({
   type: z.literal('multi_action'),
   actions: z.array(
@@ -125,7 +135,39 @@ export const actionSchema = z.discriminatedUnion('type', [
   obsSchema,
   discordSchema,
   macroActionSchema,
+  trackpadActionSchema,
 ]);
+
+// --- Trackpad / mouse message schemas (v1.4.0+) ---------------------------
+
+const mouseButtonName = z.enum(['left', 'right', 'middle']);
+
+export const mouseMoveMessageSchema = z.object({
+  type: z.literal('mouse_move'),
+  // Cap deltas to ±200px per packet to defang a malicious client trying to
+  // jam the cursor across screens — at 60Hz that's still ±12000px/s, way
+  // more than any real trackpad. Anything beyond this is dropped.
+  dx: z.number().min(-200).max(200),
+  dy: z.number().min(-200).max(200),
+  lock: z.boolean().optional(),
+});
+
+export const mouseClickMessageSchema = z.object({
+  type: z.literal('mouse_click'),
+  button: mouseButtonName,
+  state: z.enum(['click', 'down', 'up']),
+});
+
+export const mouseScrollMessageSchema = z.object({
+  type: z.literal('mouse_scroll'),
+  dy: z.number().min(-200).max(200),
+  dx: z.number().min(-200).max(200).optional(),
+});
+
+export const mouseDragMessageSchema = z.object({
+  type: z.literal('mouse_drag'),
+  phase: z.enum(['start', 'end']),
+});
 
 // --- Hello Handshake (v1.1) ---
 
@@ -135,6 +177,14 @@ export const helloSchema = z.object({
   clientVersion: z.string().min(1),
   deviceName: z.string().min(1).max(64),
   deviceId: z.string().min(1).max(128),
+  pairingSecret: z.string().min(16).max(128).optional(),
+  proStatus: z.object({
+    isPro: z.boolean(),
+    plan: z.enum(['free', 'monthly', 'yearly', 'lifetime']),
+    purchaseDate: z.string().optional(),
+    expiresAt: z.string().optional(),
+    source: z.enum(['apple_iap', 'google_play', 'stripe', 'none']),
+  }).optional(),
 });
 
 export const textInputMessageSchema = z.object({
@@ -162,6 +212,10 @@ export const profileSyncSchema = z.object({
   })).max(50),
 });
 
+export const subscribeProfileSchema = z.object({
+  type: z.literal('subscribe_profile'),
+});
+
 // --- Message Schemas ---
 
 export const executeMessageSchema = z.object({
@@ -179,6 +233,7 @@ export const pairRequestSchema = z.object({
   type: z.literal('pair_request'),
   deviceName: z.string().min(1).max(64),
   deviceId: z.string().min(1).max(128),
+  pairingSecret: z.string().min(16).max(128).optional(),
 });
 
 export const clientMessageSchema = z.discriminatedUnion('type', [
@@ -190,6 +245,11 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
   macroExecuteSchema,
   requestCapabilitiesSchema,
   profileSyncSchema,
+  subscribeProfileSchema,
+  mouseMoveMessageSchema,
+  mouseClickMessageSchema,
+  mouseScrollMessageSchema,
+  mouseDragMessageSchema,
 ]);
 
 // --- Button Config Schema ---
@@ -197,6 +257,51 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
 export const buttonLabelSchema = z.string().max(16).optional();
 
 export const gridLayoutSchema = z.enum(['2x4', '3x4', '4x5', '5x3', '8x4', '8x8']);
+
+// --- Profile Config Schemas (used for profile import/export validation) ---
+
+/**
+ * Optional per-gesture bindings (Phase B4). Each slot reuses `actionSchema`
+ * so a swipe or pinch can fire any action the tap action could — no special
+ * casing needed in the companion execute path.
+ */
+export const buttonGesturesSchema = z.object({
+  longPress: actionSchema.optional(),
+  swipeUp: actionSchema.optional(),
+  swipeDown: actionSchema.optional(),
+  pinchIn: actionSchema.optional(),
+  pinchOut: actionSchema.optional(),
+});
+
+export const buttonConfigSchema = z.object({
+  id: z.string().min(1),
+  action: actionSchema.nullable(),
+  gestures: buttonGesturesSchema.optional(),
+  label: buttonLabelSchema,
+  labelSize: z.number().optional(),
+  labelPosition: z.enum(['top', 'bottom', 'hidden']).optional(),
+  icon: z.string().optional(),
+  customImage: z.string().optional(),
+  color: z.string().optional(),
+  page: z.number(),
+  position: z.number(),
+});
+
+export const pageConfigSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  buttons: z.array(buttonConfigSchema),
+  layout: gridLayoutSchema,
+});
+
+export const profileConfigSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  pages: z.array(pageConfigSchema).min(1),
+  theme: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
 
 // --- Validation helpers ---
 

@@ -16,7 +16,8 @@ export type ActionType =
   | 'counter'
   | 'obs'
   | 'discord'
-  | 'macro';
+  | 'macro'
+  | 'trackpad';
 
 export interface KeybindAction {
   type: 'keybind';
@@ -104,6 +105,32 @@ export interface MacroAction {
   macroName: string;
 }
 
+/**
+ * Trackpad action (v1.2.0+). Tapping the tile opens a full-screen trackpad
+ * overlay on the phone; while open, the overlay streams `mouse_*` messages
+ * to the companion outside the standard `execute` flow (high-frequency).
+ *
+ * `sensitivity` is a 0.5–2x multiplier on cursor velocity. `naturalScroll`
+ * inverts the scroll axis to match macOS-style trackpads.
+ *
+ * v1.2.1 additions:
+ *   - `haptics`: per-action toggle so users on a quiet phone can silence
+ *     the click feedback without globally disabling haptics.
+ *   - `accelCurve`: acceleration profile applied to the move delta. Linear
+ *     keeps the raw delta; 'classic' applies the OS-trackpad feel where
+ *     small flicks stay precise but big swipes amplify.
+ *   - `lockToPrimary`: when true, the companion clamps the cursor to the
+ *     primary monitor (prevents accidental jumps to second screens).
+ */
+export interface TrackpadAction {
+  type: 'trackpad';
+  sensitivity?: number;
+  naturalScroll?: boolean;
+  haptics?: boolean;
+  accelCurve?: 'linear' | 'classic';
+  lockToPrimary?: boolean;
+}
+
 export type Action =
   | KeybindAction
   | AppLaunchAction
@@ -115,13 +142,39 @@ export type Action =
   | CounterAction
   | OBSAction
   | DiscordAction
-  | MacroAction;
+  | MacroAction
+  | TrackpadAction;
 
 // --- Button ---
+
+/**
+ * Optional per-gesture bindings. Each slot fires the given Action when the
+ * corresponding gesture is recognised on the tile. Tap remains the primary
+ * activation path (always fires `ButtonConfig.action`); these are additive.
+ *
+ * UX contract (Phase B4 plan, UX judge revision): the Editor surfaces these
+ * progressively — default view is "Press only"; a "Multi-gesture" toggle
+ * reveals slots one at a time to avoid overwhelming the user.
+ */
+export interface ButtonGestures {
+  longPress?: Action;
+  swipeUp?: Action;
+  swipeDown?: Action;
+  pinchIn?: Action;
+  pinchOut?: Action;
+}
+
+/**
+ * Which gesture was used to activate the tile. Primary tap uses 'tap'; used
+ * as the `gesture` key when firing an execute message so the companion (and
+ * telemetry) can distinguish one trigger from another.
+ */
+export type GestureName = 'tap' | 'longPress' | 'swipeUp' | 'swipeDown' | 'pinchIn' | 'pinchOut';
 
 export interface ButtonConfig {
   id: string;
   action: Action | null;
+  gestures?: ButtonGestures;
   label?: string;
   labelSize?: number;
   labelPosition?: 'top' | 'bottom' | 'hidden';
@@ -183,6 +236,11 @@ export interface ThemeColors {
   statusRed: string;
 }
 
+/** v1.3.0: tile shape controls the corner radius style without
+ *  hard-coding a single radius — themes can ship 'pill' (high radius) for
+ *  a soft chaotic feel, 'square' for crisp Coder vibes, etc. */
+export type TileShape = 'square' | 'rounded' | 'squircle' | 'pill';
+
 export interface ThemeConfig {
   id: string;
   name: string;
@@ -191,6 +249,13 @@ export interface ThemeConfig {
   customBackground?: string;
   buttonCornerRadius?: number;
   gridGap?: number;
+  /** v1.3.0: tile shape preset. Overrides buttonCornerRadius if set. */
+  tileShape?: TileShape;
+  /** v1.3.0: optional rim glow color. Themes with high-energy palettes
+   *  (neon-rgb, chaos) use it to give tiles a subtle outer glow. */
+  accentGlow?: string;
+  /** v1.3.0: optional tag exposed to telemetry + theming animations. */
+  mood?: 'calm' | 'energetic' | 'chaotic' | 'pro' | 'retro';
 }
 
 // --- Connection ---
@@ -203,6 +268,8 @@ export interface PairedDevice {
   ip: string;
   port: number;
   certFingerprint: string;
+  /** Stored in SecureStore on mobile. Required for authenticated LAN control. */
+  pairingSecret?: string;
   pairedAt: string;
   lastSeen?: string;
 }
@@ -213,6 +280,7 @@ export interface QRPairingPayload {
   ip: string;
   port: number;
   certFingerprint: string;
+  pairingSecret: string;
   companionName: string;
   version: string;
 }
@@ -258,7 +326,7 @@ export const PRO_LIMITS = {
   gifIcons: true,
   multiAction: true,
   macros: true,
-  obsIntegration: true,
+  obsIntegration: false,
   discordIntegration: true,
   profileExport: true,
   folderSupport: true,

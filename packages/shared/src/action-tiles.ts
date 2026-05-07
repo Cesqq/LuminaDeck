@@ -17,7 +17,7 @@ export interface ActionTile {
 
 export const TILE_CATEGORIES = [
   'media', 'system', 'clipboard', 'window', 'app_launch',
-  'obs', 'discord', 'utility', 'macros',
+  'discord', 'utility', 'macros', 'mouse',
 ] as const;
 
 export type TileCategory = typeof TILE_CATEGORIES[number];
@@ -28,10 +28,10 @@ export const TILE_CATEGORY_LABELS: Record<TileCategory, string> = {
   clipboard: 'Clipboard',
   window: 'Window',
   app_launch: 'Apps',
-  obs: 'OBS Studio',
   discord: 'Discord',
   utility: 'Utility',
   macros: 'Macros',
+  mouse: 'Mouse',
 };
 
 export const ACTION_TILES: ActionTile[] = [
@@ -92,15 +92,6 @@ export const ACTION_TILES: ActionTile[] = [
     requiresPro: false,
     defaultAction: { type: 'system_action', action: 'volume_mute' },
   },
-  {
-    id: 'media-mic-mute',
-    name: 'Mic Mute',
-    category: 'media',
-    icon: 'mic-mute',
-    requiresPro: false,
-    defaultAction: { type: 'system_action', action: 'mic_mute' },
-  },
-
   // ── System (6) ──────────────────────────────
   {
     id: 'sys-screenshot',
@@ -117,30 +108,6 @@ export const ACTION_TILES: ActionTile[] = [
     icon: 'lock-screen',
     requiresPro: false,
     defaultAction: { type: 'system_action', action: 'lock_screen' },
-  },
-  {
-    id: 'sys-sleep',
-    name: 'Sleep',
-    category: 'system',
-    icon: 'sleep',
-    requiresPro: false,
-    defaultAction: { type: 'system_action', action: 'sleep' },
-  },
-  {
-    id: 'sys-brightness-up',
-    name: 'Brightness Up',
-    category: 'system',
-    icon: 'brightness-up',
-    requiresPro: false,
-    defaultAction: { type: 'system_action', action: 'brightness_up' },
-  },
-  {
-    id: 'sys-brightness-down',
-    name: 'Brightness Down',
-    category: 'system',
-    icon: 'brightness-down',
-    requiresPro: false,
-    defaultAction: { type: 'system_action', action: 'brightness_down' },
   },
   {
     id: 'sys-wifi',
@@ -303,56 +270,6 @@ export const ACTION_TILES: ActionTile[] = [
     defaultAction: { type: 'keybind', keys: ['win', 'shift', 's'] },
   },
 
-  // ── OBS Studio (6, Pro) ────────────────────
-  {
-    id: 'obs-scene',
-    name: 'Switch Scene',
-    category: 'obs',
-    icon: 'scene-switch',
-    requiresPro: true,
-    defaultAction: { type: 'obs', command: 'switch_scene', sceneName: 'Scene 1' },
-  },
-  {
-    id: 'obs-record',
-    name: 'Toggle Record',
-    category: 'obs',
-    icon: 'recording',
-    requiresPro: true,
-    defaultAction: { type: 'obs', command: 'toggle_record' },
-  },
-  {
-    id: 'obs-stream',
-    name: 'Toggle Stream',
-    category: 'obs',
-    icon: 'go-live',
-    requiresPro: true,
-    defaultAction: { type: 'obs', command: 'toggle_stream' },
-  },
-  {
-    id: 'obs-source',
-    name: 'Toggle Source',
-    category: 'obs',
-    icon: 'layers',
-    requiresPro: true,
-    defaultAction: { type: 'obs', command: 'toggle_source', sourceName: 'Camera' },
-  },
-  {
-    id: 'obs-replay',
-    name: 'Replay Buffer',
-    category: 'obs',
-    icon: 'record',
-    requiresPro: true,
-    defaultAction: { type: 'obs', command: 'replay_buffer' },
-  },
-  {
-    id: 'obs-screenshot',
-    name: 'OBS Screenshot',
-    category: 'obs',
-    icon: 'screenshot',
-    requiresPro: true,
-    defaultAction: { type: 'obs', command: 'obs_screenshot' },
-  },
-
   // ── Discord (3, Pro) ───────────────────────
   {
     id: 'discord-mute',
@@ -370,15 +287,6 @@ export const ACTION_TILES: ActionTile[] = [
     requiresPro: true,
     defaultAction: { type: 'discord', command: 'toggle_deafen' },
   },
-  {
-    id: 'discord-ptt',
-    name: 'Push to Talk',
-    category: 'discord',
-    icon: 'push-to-talk',
-    requiresPro: true,
-    defaultAction: { type: 'discord', command: 'push_to_talk' },
-  },
-
   // ── Utility (5) ────────────────────────────
   {
     id: 'util-timer',
@@ -427,6 +335,17 @@ export const ACTION_TILES: ActionTile[] = [
     defaultAction: { type: 'keybind', keys: ['ctrl', 's'] },
   },
 
+  // ── Mouse / Trackpad (1, v1.2.0+) ───────────
+  {
+    id: 'mouse-trackpad',
+    name: 'Trackpad',
+    category: 'mouse',
+    icon: 'target',
+    requiresPro: false,
+    defaultAction: { type: 'trackpad', sensitivity: 1.0, naturalScroll: false },
+    description: 'Tap to open a full-screen trackpad. Drag = move cursor; tap = click; 2-finger tap = right click.',
+  },
+
   // ── Pre-made Macros (4, Pro) ───────────────
   {
     id: 'macro-dnd',
@@ -438,11 +357,10 @@ export const ACTION_TILES: ActionTile[] = [
       type: 'multi_action',
       actions: [
         { type: 'system_action', action: 'volume_mute' },
-        { type: 'system_action', action: 'mic_mute' },
       ],
       delays: [200],
     },
-    description: 'Mutes volume + microphone',
+    description: 'Mutes system volume',
   },
   {
     id: 'macro-meeting',
@@ -453,12 +371,11 @@ export const ACTION_TILES: ActionTile[] = [
     defaultAction: {
       type: 'multi_action',
       actions: [
-        { type: 'system_action', action: 'mic_mute' },
         { type: 'keybind', keys: ['win', 'd'] },
       ],
       delays: [300],
     },
-    description: 'Mutes mic + shows desktop',
+    description: 'Shows desktop for a quick meeting reset',
   },
   {
     id: 'macro-stream-start',
