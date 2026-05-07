@@ -2,7 +2,7 @@
   "expo": {
     "name": "LuminaDeck",
     "slug": "luminadeck",
-    "version": "1.3.4",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.luminadeck.app",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "LuminaDeck discovers and connects to the LuminaDeck Companion app on your PC over your local WiFi network to send button commands.",
         "NSBonjourServices": [
@@ -48,7 +48,7 @@
         "backgroundColor": "#0D0D0D"
       },
       "package": "com.luminadeck.app",
-      "versionCode": 10,
+      "versionCode": 11,
       "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.CAMERA"
