@@ -12,6 +12,8 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useProfiles } from '../contexts/ProfileContext';
 import { usePro } from '../contexts/ProContext';
+import { TELEMETRY_EVENTS } from '@luminadeck/shared';
+import { track } from '../lib/telemetry';
 
 interface ProfileManagerScreenProps {
   visible: boolean;
@@ -123,7 +125,12 @@ export function ProfileManagerScreen({ visible, onClose }: ProfileManagerScreenP
                     borderWidth: isActive ? 2 : 1,
                   },
                 ]}
-                onPress={() => setActiveProfile(item.id)}
+                onPress={() => {
+                  setActiveProfile(item.id);
+                  // User-initiated switch — distinct from the matcher-driven
+                  // `profile_switch_auto` fired by ConnectionContext.
+                  track(TELEMETRY_EVENTS.PROFILE_SWITCH_MANUAL, {});
+                }}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: isActive }}
                 accessibilityLabel={`${item.name} profile${isActive ? ', active' : ''}`}

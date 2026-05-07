@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MacroConfig } from '@luminadeck/shared';
+import { mergeStoredMacros } from '@luminadeck/shared';
 import { useTheme } from '../contexts/ThemeContext';
 import { MacroEditorScreen } from './MacroEditorScreen';
 
@@ -61,15 +62,22 @@ export function MacroListScreen({ onClose }: MacroListScreenProps) {
   const [editingMacro, setEditingMacro] = useState<MacroConfig | 'new' | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Load on mount
+  // Load on mount. Merges into existing state instead of overwriting so
+  // a fast-tapping user who creates a macro before AsyncStorage resolves
+  // doesn't lose their work.
   useEffect(() => {
-    loadMacros().then((m) => {
-      setMacros(m);
+    let cancelled = false;
+    loadMacros().then((stored) => {
+      if (cancelled) return;
+      setMacros((current) => mergeStoredMacros(current, stored));
       setLoaded(true);
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Save whenever macros change (after initial load)
+  // Save whenever macros change (after initial load).
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -77,7 +85,17 @@ export function MacroListScreen({ onClose }: MacroListScreenProps) {
       return;
     }
     if (loaded) {
-      saveMacros(macros);
+      saveMacros(macros).catch((err) => {
+        // Surface storage failures instead of silently losing user data.
+        // The toast/alert path here is intentionally minimal — if storage
+        // is broken there's not much the user can do, but at least they'll
+        // know something went wrong instead of seeing a "saved" UI lie.
+        console.warn('[macros] AsyncStorage write failed:', err);
+        Alert.alert(
+          'Save Failed',
+          'Could not save macros to device storage. Your changes may be lost. Try freeing up space and reopening the app.',
+        );
+      });
     }
   }, [macros, loaded]);
 

@@ -12,7 +12,8 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "postinstall": "node scripts/patch-react-native-push-notification-ios.cjs"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

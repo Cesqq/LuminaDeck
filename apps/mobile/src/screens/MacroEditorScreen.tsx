@@ -93,10 +93,6 @@ const SYSTEM_ACTIONS: { value: SystemActionName; label: string }[] = [
   { value: 'media_stop', label: 'Stop' },
   { value: 'screenshot', label: 'Screenshot' },
   { value: 'lock_screen', label: 'Lock' },
-  { value: 'sleep', label: 'Sleep' },
-  { value: 'brightness_up', label: 'Brightness Up' },
-  { value: 'brightness_down', label: 'Brightness Down' },
-  { value: 'mic_mute', label: 'Mic Mute' },
 ];
 
 const ACTION_TYPE_OPTIONS: { value: ActionType; label: string }[] = [

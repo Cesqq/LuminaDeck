@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import type {
   ButtonConfig,
+  ButtonGestures,
   Action,
   ActionType,
   KeybindAction,
@@ -22,8 +23,10 @@ import type {
   OBSCommand,
   DiscordAction,
   DiscordCommand,
+  ThemeColors,
 } from '@luminadeck/shared';
-import { VALID_KEYS, MODIFIER_KEYS } from '@luminadeck/shared';
+import { VALID_KEYS, MODIFIER_KEYS, TELEMETRY_EVENTS } from '@luminadeck/shared';
+import { track } from '../lib/telemetry';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePro } from '../contexts/ProContext';
 import { pickButtonImage } from '../lib/imagePicker';
@@ -85,10 +88,6 @@ const SYSTEM_ACTIONS: { value: SystemActionName; label: string }[] = [
   { value: 'media_stop', label: 'Stop Media' },
   { value: 'screenshot', label: 'Screenshot' },
   { value: 'lock_screen', label: 'Lock Screen' },
-  { value: 'sleep', label: 'Sleep' },
-  { value: 'brightness_up', label: 'Brightness Up' },
-  { value: 'brightness_down', label: 'Brightness Down' },
-  { value: 'mic_mute', label: 'Mic Mute' },
 ];
 
 const ACTION_TYPES: { value: ActionType; label: string; proOnly: boolean }[] = [
@@ -97,7 +96,6 @@ const ACTION_TYPES: { value: ActionType; label: string; proOnly: boolean }[] = [
   { value: 'system_action', label: 'System', proOnly: false },
   { value: 'multi_action', label: 'Multi-Action', proOnly: true },
   { value: 'text_input', label: 'Text Input', proOnly: false },
-  { value: 'obs', label: 'OBS Studio', proOnly: true },
   { value: 'discord', label: 'Discord', proOnly: true },
 ];
 
@@ -113,7 +111,6 @@ const OBS_COMMANDS: { value: OBSCommand; label: string }[] = [
 const DISCORD_COMMANDS: { value: DiscordCommand; label: string }[] = [
   { value: 'toggle_mute', label: 'Toggle Mute' },
   { value: 'toggle_deafen', label: 'Toggle Deafen' },
-  { value: 'push_to_talk', label: 'Push to Talk' },
 ];
 
 const PALETTE_COLORS = [
@@ -177,6 +174,18 @@ export function EditorScreen({
   const { colors } = useTheme();
   const { isPro } = usePro();
 
+  // Editor session tracking — fire a single `editor_session` event on unmount
+  // with the total ms the inspector was open. Surface is 'mobile' here;
+  // Studio's vanilla-JS editor will emit the same event with 'studio'.
+  const openedAtRef = useRef<number>(Date.now());
+  useEffect(() => {
+    openedAtRef.current = Date.now();
+    return () => {
+      const durationMs = Date.now() - openedAtRef.current;
+      track(TELEMETRY_EVENTS.EDITOR_SESSION, { surface: 'mobile', durationMs });
+    };
+  }, []);
+
   const [actionType, setActionType] = useState<ActionType>(
     button.action?.type ?? 'keybind',
   );
@@ -206,6 +215,14 @@ export function EditorScreen({
   // Multi-action state
   const [subActions, setSubActions] = useState<SubAction[]>(
     () => initSubActionsFromButton(button),
+  );
+
+  // Gestures state (Phase B4). Bindings live on a copy of the original and
+  // get merged into the final ButtonConfig on save. `undefined` on a slot
+  // means "not bound"; the UI below limits editing to `system_action` to
+  // keep scope tight — pre-existing complex bindings round-trip untouched.
+  const [gestures, setGestures] = useState<ButtonGestures>(
+    () => button.gestures ?? {},
   );
 
   // Custom image state
@@ -338,6 +355,10 @@ export function EditorScreen({
       return;
     }
 
+    // Drop empty gestures object so the profile JSON stays tidy and round-
+    // trips cleanly through the Zod schema when it's unchanged from default.
+    const hasGestures = Object.values(gestures).some((a) => a !== undefined);
+
     const updated: ButtonConfig = {
       ...button,
       action: builtAction,
@@ -345,10 +366,11 @@ export function EditorScreen({
       icon: selectedIcon,
       color: selectedColor,
       customImage,
+      ...(hasGestures ? { gestures } : {}),
     };
 
     onSave(updated);
-  }, [button, builtAction, label, selectedIcon, selectedColor, customImage, onSave]);
+  }, [button, builtAction, label, selectedIcon, selectedColor, customImage, gestures, onSave]);
 
   const handleImagePicker = useCallback(async () => {
     if (!isPro) {
@@ -1540,6 +1562,45 @@ export function EditorScreen({
         )}
       </View>
 
+      {/* Gestures (Phase B4) */}
+      <View style={[
+        { marginHorizontal: 16, marginBottom: 20, padding: 12, borderWidth: 1, borderRadius: 12 },
+        { backgroundColor: colors.buttonBackground, borderColor: colors.buttonBorder },
+      ]}>
+        <Text
+          style={[styles.sectionTitle, { color: colors.text, marginBottom: 6 }]}
+          allowFontScaling
+          maxFontSizeMultiplier={1.5}
+        >
+          Gestures
+        </Text>
+        <Text
+          style={[{ fontSize: 12, lineHeight: 16, marginBottom: 10 }, { color: colors.textSecondary }]}
+          allowFontScaling
+          maxFontSizeMultiplier={1.5}
+        >
+          Optional. Binds a system action to a gesture on this tile. Setting a
+          long-press action replaces the edit shortcut for this tile. Rich
+          gestures (keybinds, multi-actions) round-trip via profile JSON.
+        </Text>
+        {(['longPress', 'swipeUp', 'swipeDown', 'pinchIn', 'pinchOut'] as const).map((g) => (
+          <GestureRow
+            key={g}
+            gesture={g}
+            action={gestures[g]}
+            onChange={(action) => {
+              setGestures((prev) => {
+                const next = { ...prev };
+                if (action === undefined) delete next[g];
+                else next[g] = action;
+                return next;
+              });
+            }}
+            colors={colors}
+          />
+        ))}
+      </View>
+
       {/* Action buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity
@@ -1579,6 +1640,146 @@ export function EditorScreen({
         onClose={() => setShowGifPicker(false)}
       />
     </ScrollView>
+  );
+}
+
+// --- Gesture row helper (Phase B4) ---
+
+const GESTURE_LABELS: Record<keyof ButtonGestures, string> = {
+  longPress: 'Long-press',
+  swipeUp: 'Swipe up',
+  swipeDown: 'Swipe down',
+  pinchIn: 'Pinch in',
+  pinchOut: 'Pinch out',
+};
+
+const GESTURE_QUICK_SYSTEM_ACTIONS: { id: SystemActionName; label: string }[] = [
+  { id: 'volume_up', label: 'Vol +' },
+  { id: 'volume_down', label: 'Vol \u2212' },
+  { id: 'media_play_pause', label: 'Play' },
+  { id: 'media_next', label: 'Next' },
+  { id: 'media_prev', label: 'Prev' },
+  { id: 'mic_mute', label: 'Mic mute' },
+];
+
+function summariseGestureAction(action: Action | undefined): string {
+  if (!action) return 'Not set';
+  if (action.type === 'system_action') {
+    const quick = GESTURE_QUICK_SYSTEM_ACTIONS.find((q) => q.id === action.action);
+    return quick ? quick.label : action.action.replace(/_/g, ' ');
+  }
+  return `Custom: ${action.type.replace(/_/g, ' ')}`;
+}
+
+function GestureRow({
+  gesture,
+  action,
+  onChange,
+  colors,
+}: {
+  gesture: keyof ButtonGestures;
+  action: Action | undefined;
+  onChange: (next: Action | undefined) => void;
+  colors: ThemeColors;
+}) {
+  const isCustom = action !== undefined && action.type !== 'system_action';
+  const selectedSystemId =
+    action?.type === 'system_action' ? action.action : undefined;
+
+  return (
+    <View style={{ marginTop: 10 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text
+          style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}
+          allowFontScaling
+          maxFontSizeMultiplier={1.5}
+        >
+          {GESTURE_LABELS[gesture]}
+        </Text>
+        <Text
+          style={{ color: colors.textSecondary, fontSize: 12 }}
+          allowFontScaling
+          maxFontSizeMultiplier={1.5}
+        >
+          {summariseGestureAction(action)}
+        </Text>
+      </View>
+      {isCustom ? (
+        <TouchableOpacity
+          onPress={() => onChange(undefined)}
+          style={{
+            marginTop: 6,
+            alignSelf: 'flex-start',
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: colors.buttonBorder,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Clear ${GESTURE_LABELS[gesture]} binding`}
+        >
+          <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '600' }} allowFontScaling maxFontSizeMultiplier={1.5}>
+            Clear custom binding
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+          <GestureChip
+            active={action === undefined}
+            label="None"
+            onPress={() => onChange(undefined)}
+            colors={colors}
+          />
+          {GESTURE_QUICK_SYSTEM_ACTIONS.map((q) => (
+            <GestureChip
+              key={q.id}
+              active={selectedSystemId === q.id}
+              label={q.label}
+              onPress={() => onChange({ type: 'system_action', action: q.id })}
+              colors={colors}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function GestureChip({
+  active,
+  label,
+  onPress,
+  colors,
+}: {
+  active: boolean;
+  label: string;
+  onPress: () => void;
+  colors: ThemeColors;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: active ? colors.accent : colors.buttonBorder,
+        backgroundColor: active ? colors.accent + '22' : 'transparent',
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+    >
+      <Text
+        style={{ color: active ? colors.accent : colors.text, fontSize: 12, fontWeight: active ? '700' : '500' }}
+        allowFontScaling
+        maxFontSizeMultiplier={1.5}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 

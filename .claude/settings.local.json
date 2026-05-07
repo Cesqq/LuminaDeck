@@ -5,7 +5,12 @@
       "Bash(gh auth:*)",
       "Bash(gh repo:*)",
       "WebFetch(domain:claudefa.st)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(cargo check *)",
+      "Bash(pnpm test *)",
+      "Bash(npx turbo *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

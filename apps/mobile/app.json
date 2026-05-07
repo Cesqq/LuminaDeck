@@ -2,11 +2,11 @@
   "expo": {
     "name": "LuminaDeck",
     "slug": "luminadeck",
-    "version": "1.0.0",
+    "version": "1.3.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "scheme": "luminadeck",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.luminadeck.app",
-      "buildNumber": "2",
+      "buildNumber": "10",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "LuminaDeck discovers and connects to the LuminaDeck Companion app on your PC over your local WiFi network to send button commands.",
         "NSBonjourServices": [
@@ -48,13 +48,14 @@
         "backgroundColor": "#0D0D0D"
       },
       "package": "com.luminadeck.app",
-      "versionCode": 1,
+      "versionCode": 10,
+      "usesCleartextTraffic": true,
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "plugins": [
+      "./plugins/withAndroidLaunchHardening",
       "expo-secure-store",
       "expo-camera",
       "expo-image-picker"
@@ -62,7 +63,8 @@
     "extra": {
       "eas": {
         "projectId": "5487c725-c788-4978-a67e-1da84e7c172e"
-      }
+      },
+      "appGroup": "group.com.luminadeck.shared"
     },
     "owner": "iczr"
   }

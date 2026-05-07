@@ -7,11 +7,11 @@ LuminaDeck turns an iPhone into a customizable macro deck for controlling a Wind
 ## Companion App Required
 
 LuminaDeck requires a free companion app running on the user's Windows PC to function. The companion app:
-- Receives button press commands from the iPhone over a secure TLS 1.3 WebSocket connection
+- Receives button press commands from the iPhone over an authenticated local-network WebSocket connection
 - Executes the requested actions via Win32 SendInput API
 - Runs as a lightweight system tray application (~5MB installer)
 
-**Download**: The companion app can be downloaded from https://luminadeck.app/download
+**Download**: The companion app can be downloaded from https://luminaaio.com/luminadeck/download
 
 ## Demo Mode
 
@@ -27,7 +27,7 @@ The app includes a fully functional **Demo Mode** that works without a companion
 
 - **Local network only**: All communication stays on the user's local WiFi network
 - **No cloud relay**: No data leaves the local network for core functionality
-- **TLS 1.3**: All connections are encrypted with self-signed certificates
+- **Authenticated pairing**: QR pairing provisions a per-device secret; unpaired devices cannot execute actions
 - **mDNS**: Used only during active pairing (Bonjour service discovery), stopped after pairing completes
 
 ## Permissions Requested
@@ -42,15 +42,15 @@ The app includes a fully functional **Demo Mode** that works without a companion
 ## In-App Purchase
 
 - **Product**: LuminaDeck Pro (non-consumable, $9.99 one-time)
-- **Free tier**: 8 buttons, 1 page, 1 theme (Obsidian), 1 paired PC
-- **Pro tier**: 30 buttons/page, 20 pages, 5 themes, custom images, multi-action, 5 PCs
+- **Free tier**: 12 buttons, 2 pages, 1 theme (Obsidian), 1 paired PC
+- **Pro tier**: 64 action keys, 50 pages, all themes, custom images, multi-action, 5 PCs
 - **Restore Purchase**: Available in Settings screen
 - **Provider**: RevenueCat (StoreKit 2)
 
 ## Privacy
 
-- No analytics SDKs included
-- No third-party tracking
+- Optional diagnostics/telemetry is off by default or advertising SDKs
+- Optional diagnostics/telemetry is off by default
 - Account email collected only if user creates a Supabase account (optional)
 - Core functionality works entirely offline
 - Privacy Manifest included (NSPrivacyAccessedAPICategoryUserDefaults for AsyncStorage)
@@ -62,7 +62,7 @@ The app includes a fully functional **Demo Mode** that works without a companion
 - Supports iPhone 12 and newer
 - Portrait orientation only
 - No background location or unnecessary background modes
-- Encryption: Standard TLS 1.3 (ITSAppUsesNonExemptEncryption: false)
+- Encryption export: ITSAppUsesNonExemptEncryption is false; core PC control uses local-network authenticated pairing rather than a cloud relay
 
 ## Test Account
 
@@ -70,4 +70,4 @@ No account is required to use the app. All features work without signing in.
 
 ## Contact
 
-For questions during review: support@luminadeck.app
+For questions during review: luminadeck@luminaaio.com

@@ -1,0 +1,6 @@
+// xcconfig overrides applied at archive time. The archive script uses this
+// for the unsigned/native-code archive step, then signs/uploads from a GUI
+// LaunchAgent so macOS keychain access works without modifying keychain ACLs.
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM = 7A2K2PDKW4
+ENABLE_USER_SCRIPT_SANDBOXING = NO

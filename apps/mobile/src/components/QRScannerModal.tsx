@@ -9,9 +9,11 @@ import {
   ActivityIndicator,
   Platform,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { BarcodeScanningResult } from 'expo-camera';
+import * as Clipboard from 'expo-clipboard';
 import type { QRPairingPayload } from '@luminadeck/shared';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -36,6 +38,7 @@ function parseQRPayload(raw: string): QRPairingPayload | null {
       typeof parsed.ip !== 'string' ||
       typeof parsed.port !== 'number' ||
       typeof parsed.certFingerprint !== 'string' ||
+      typeof parsed.pairingSecret !== 'string' ||
       typeof parsed.companionName !== 'string' ||
       typeof parsed.version !== 'string'
     ) {
@@ -53,10 +56,15 @@ function parseQRPayload(raw: string): QRPairingPayload | null {
       return null;
     }
 
+    if (parsed.pairingSecret.length < 16 || parsed.pairingSecret.length > 128) {
+      return null;
+    }
+
     return {
       ip: parsed.ip,
       port: parsed.port,
       certFingerprint: parsed.certFingerprint,
+      pairingSecret: parsed.pairingSecret,
       companionName: parsed.companionName,
       version: parsed.version,
     };
@@ -221,10 +229,19 @@ export function QRScannerModal({ visible, onScan, onClose }: QRScannerModalProps
             <CameraView
               style={styles.camera}
               facing="back"
+              // autofocus="on" is required on Galaxy S20 / many Android
+              // devices for onBarcodeScanned to fire reliably; without it
+              // the camera renders but the barcode pipeline never wakes up.
+              autofocus="on"
               barcodeScannerSettings={{
                 barcodeTypes: ['qr'],
               }}
-              onBarcodeScanned={hasScanned ? undefined : handleBarCodeScanned}
+              onBarcodeScanned={hasScanned ? undefined : (result) => {
+                if (__DEV__) {
+                  console.log('[QRScanner] barcode scanned:', result.type, (result.data ?? '').slice(0, 60));
+                }
+                handleBarCodeScanned(result);
+              }}
             />
 
             {/* Scanning overlay */}
@@ -276,15 +293,51 @@ export function QRScannerModal({ visible, onScan, onClose }: QRScannerModalProps
               />
             </View>
 
-            {/* Instruction text below viewfinder */}
+            {/* Instruction + manual-paste fallback below viewfinder */}
             <View style={styles.instructionContainer}>
               <Text
-                style={[styles.instructionText, { color: colors.textSecondary }]}
+                style={[styles.instructionText, { color: '#FFFFFF' }]}
                 allowFontScaling
                 maxFontSizeMultiplier={1.5}
               >
                 Point your camera at the QR code shown in the LuminaDeck Companion app
               </Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  // Manual fallback: in Studio, the QR JSON is also
+                  // accessible as text the user can copy. Paste it from
+                  // the clipboard when the camera path isn't firing
+                  // (Galaxy S20 autofocus quirks etc.).
+                  try {
+                    const raw = await Clipboard.getStringAsync();
+                    if (!raw) {
+                      Alert.alert('Clipboard empty', 'Copy the JSON from the Companion app first.');
+                      return;
+                    }
+                    const payload = parseQRPayload(raw);
+                    if (payload) {
+                      setHasScanned(true);
+                      setError(null);
+                      onScan(payload);
+                    } else {
+                      setError('Pasted text is not a valid LuminaDeck pairing payload.');
+                    }
+                  } catch {
+                    setError('Could not read clipboard.');
+                  }
+                }}
+                style={[styles.pasteButton, { borderColor: colors.accent }]}
+                accessibilityRole="button"
+                accessibilityLabel="Paste pairing JSON from clipboard"
+              >
+                <Text
+                  style={[styles.pasteButtonText, { color: colors.accent }]}
+                  allowFontScaling
+                  maxFontSizeMultiplier={1.5}
+                >
+                  Paste from clipboard
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -481,6 +534,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
+  },
+  pasteButton: {
+    marginTop: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  pasteButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   // --- Error toast ---
   errorContainer: {

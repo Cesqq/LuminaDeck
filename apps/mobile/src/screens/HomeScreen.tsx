@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,18 +8,24 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import type { ButtonConfig, ProfileConfig, PageConfig, FolderAction } from '@luminadeck/shared';
+import type { Action, ButtonConfig, PageConfig, FolderAction } from '@luminadeck/shared';
+import type { CellGesture } from '../components/ButtonCell';
 import { GRID_DIMENSIONS } from '@luminadeck/shared';
 import { ButtonGrid } from '../components/ButtonGrid';
 import { FolderView } from '../components/FolderView';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { TileLibraryScreen } from './TileLibraryScreen';
+import { SmartPageScreen } from './SmartPageScreen';
+import { TrackpadOverlay } from '../components/TrackpadOverlay';
 import { useTheme } from '../contexts/ThemeContext';
 import { useConnection } from '../contexts/ConnectionContext';
 import { usePro } from '../contexts/ProContext';
-import { loadProfile, saveProfile, loadSettings, hapticStyleFromIntensity } from '../lib/storage';
+import { useProfiles } from '../contexts/ProfileContext';
+import { loadSettings, hapticStyleFromIntensity } from '../lib/storage';
 import type { HapticIntensity } from '../lib/storage';
+import { recordButtonPress, isPredictorEnabled, setCurrentProfileId } from '../lib/predictor';
 import * as Haptics from 'expo-haptics';
+import { Modal } from 'react-native';
 
 interface TileLibraryState {
   visible: boolean;
@@ -31,6 +37,14 @@ interface FolderState {
   folder: FolderAction;
 }
 
+interface TrackpadState {
+  sensitivity: number;
+  naturalScroll: boolean;
+  haptics: boolean;
+  accelCurve: 'linear' | 'classic';
+  lockToPrimary: boolean;
+}
+
 interface HomeScreenProps {
   onNavigateSettings: () => void;
   onEditButton: (button: ButtonConfig, pageIndex: number) => void;
@@ -40,49 +54,104 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
   const { colors } = useTheme();
   const { status, client } = useConnection();
   const { limits } = usePro();
-  const [profile, setProfile] = useState<ProfileConfig | null>(null);
+  // Single source of truth: the active profile lives in ProfileContext and is
+  // driven by (a) user switches in ProfileManagerScreen and (b) remote
+  // `profile_update` / `profile_switch` pushes from Studio. Reading it here
+  // means both of those paths flow straight into the rendered deck without
+  // a separate storage round-trip — fixes the "nothing happens when I swap
+  // profile" + "Push to Phone does nothing" bugs in v1.1.0 (3).
+  const { activeProfile, updateProfile } = useProfiles();
+  const profile = activeProfile;
   const [currentPage, setCurrentPage] = useState(0);
   const [hapticStyle, setHapticStyle] = useState<Haptics.ImpactFeedbackStyle | null>(
     Haptics.ImpactFeedbackStyle.Medium,
   );
   const [tileLibrary, setTileLibrary] = useState<TileLibraryState | null>(null);
   const [openFolder, setOpenFolder] = useState<FolderState | null>(null);
+  const [showSmart, setShowSmart] = useState(false);
+  const [trackpad, setTrackpad] = useState<TrackpadState | null>(null);
   const pagerRef = useRef<PagerView>(null);
 
+  // Re-point the predictor at the active profile's ring buffer whenever it
+  // switches — presses should always land in the right bucket.
   useEffect(() => {
-    loadProfile().then(setProfile);
+    if (profile?.id) setCurrentProfileId(profile.id);
+  }, [profile?.id]);
+
+  useEffect(() => {
     loadSettings().then((settings) => {
       setHapticStyle(hapticStyleFromIntensity(settings.hapticIntensity));
     });
   }, []);
 
-  const handleButtonPress = useCallback(
-    (button: ButtonConfig) => {
-      if (!button.action) return;
-
-      // Open folder view when a folder-type button is pressed
-      if (button.action.type === 'folder') {
-        setOpenFolder({ folder: button.action as FolderAction });
+  // Central action dispatch. Tap and all gesture paths funnel here so the
+  // folder-open short-circuit + the 'disconnected = do nothing' rule stay in
+  // one place.
+  const sendAction = useCallback(
+    (action: Action) => {
+      if (action.type === 'folder') {
+        setOpenFolder({ folder: action as FolderAction });
         return;
       }
-
+      // v1.2.0: trackpad action opens the cursor overlay locally; the
+      // overlay then streams mouse_* messages directly. We don't ship
+      // the action through `execute` because the companion side
+      // intentionally doesn't have a Trackpad branch in actions::Action.
+      if (action.type === 'trackpad') {
+        setTrackpad({
+          sensitivity: action.sensitivity ?? 1.0,
+          naturalScroll: action.naturalScroll ?? false,
+          haptics: action.haptics ?? true,
+          accelCurve: action.accelCurve ?? 'classic',
+          lockToPrimary: action.lockToPrimary ?? false,
+        });
+        return;
+      }
       if (status === 'connected') {
         const msgId = `exec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         client.send({
           type: 'execute',
           id: msgId,
-          action: button.action as any,
+          action: action as any,
         });
       }
     },
     [status, client],
   );
 
+  const handleButtonPress = useCallback(
+    (button: ButtonConfig) => {
+      if (!button.action) return;
+      recordButtonPress(button.id);
+      sendAction(button.action);
+    },
+    [sendAction],
+  );
+
   const handleButtonLongPress = useCallback(
     (button: ButtonConfig) => {
+      // If the tile binds a long-press gesture, fire it instead of opening
+      // the editor. Users opt into this tradeoff by configuring the binding.
+      const bound = button.gestures?.longPress;
+      if (bound) {
+        recordButtonPress(button.id);
+        sendAction(bound);
+        return;
+      }
       onEditButton(button, currentPage);
     },
-    [onEditButton, currentPage],
+    [onEditButton, currentPage, sendAction],
+  );
+
+  const handleButtonGesture = useCallback(
+    (button: ButtonConfig, gesture: CellGesture) => {
+      const bound = button.gestures?.[gesture];
+      if (bound) {
+        recordButtonPress(button.id);
+        sendAction(bound);
+      }
+    },
+    [sendAction],
   );
 
   const handleEmptyPress = useCallback(
@@ -93,7 +162,7 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
   );
 
   const handleTileSelect = useCallback(
-    async (newButton: ButtonConfig) => {
+    (newButton: ButtonConfig) => {
       setTileLibrary(null);
       if (!profile) return;
 
@@ -107,18 +176,15 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
         return;
       }
 
-      // Add the button to the profile and persist
+      // Append the button via ProfileContext so the change lands in the
+      // shared profiles store + flows out to any re-renders (editor, Smart
+      // Page, etc.) without a second storage read.
       const updatedButtons = [...page.buttons, newButton];
       const updatedPages = [...profile.pages];
       updatedPages[pageIdx] = { ...page, buttons: updatedButtons };
-      const updatedProfile: ProfileConfig = {
-        ...profile,
-        pages: updatedPages,
-      };
-      setProfile(updatedProfile);
-      await saveProfile(updatedProfile);
+      updateProfile({ ...profile, pages: updatedPages });
     },
-    [profile, onEditButton],
+    [profile, onEditButton, updateProfile],
   );
 
   const handleTileLibraryClose = useCallback(() => {
@@ -145,22 +211,50 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
       {/* Top bar */}
       <View style={styles.topBar}>
         <ConnectionStatus status={status} colors={colors} />
-        <TouchableOpacity
-          onPress={onNavigateSettings}
-          style={styles.settingsButton}
-          accessibilityRole="button"
-          accessibilityLabel="Open settings"
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Text
-            style={[styles.settingsIcon, { color: colors.textSecondary }]}
-            allowFontScaling
-            maxFontSizeMultiplier={1.5}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {isPredictorEnabled() && (
+            <TouchableOpacity
+              onPress={() => setShowSmart(true)}
+              style={styles.settingsButton}
+              accessibilityRole="button"
+              accessibilityLabel="Open Smart Page"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Text
+                style={[styles.settingsIcon, { color: colors.accent }]}
+                allowFontScaling
+                maxFontSizeMultiplier={1.5}
+              >
+                {'\u2728'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={onNavigateSettings}
+            style={styles.settingsButton}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            {'\u2699'}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[styles.settingsIcon, { color: colors.textSecondary }]}
+              allowFontScaling
+              maxFontSizeMultiplier={1.5}
+            >
+              {'\u2699'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <Modal
+        visible={showSmart}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowSmart(false)}
+      >
+        <SmartPageScreen profile={profile} onClose={() => setShowSmart(false)} />
+      </Modal>
 
       {/* Demo mode banner */}
       {status !== 'connected' && (
@@ -170,7 +264,7 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
             allowFontScaling
             maxFontSizeMultiplier={1.5}
           >
-            Demo Mode \u2014 Connect to a companion PC to execute actions
+            Demo Mode — Connect to a companion PC to execute actions
           </Text>
         </View>
       )}
@@ -194,6 +288,7 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
                 onPress={handleButtonPress}
                 onLongPress={handleButtonLongPress}
                 onEmptyPress={handleEmptyPress}
+                onGesture={handleButtonGesture}
               />
             </View>
           ))}
@@ -211,30 +306,38 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
                 onPress={handleButtonPress}
                 onLongPress={handleButtonLongPress}
                 onEmptyPress={handleEmptyPress}
+                onGesture={handleButtonGesture}
               />
             </>
           )}
         </View>
       )}
 
-      {/* Page indicator dots */}
+      {/* Page indicator dots — v1.1.1: active page becomes a wider pill so
+          the indicator works as a glanceable progress hint, not just a
+          color toggle. Inactive dots stay 8x8 circles. */}
       {pageCount > 1 && (
         <View style={styles.dotsContainer}>
-          {pages.map((page, index) => (
-            <View
-              key={page.id}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor:
-                    index === currentPage ? colors.accent : colors.textSecondary + '44',
-                },
-              ]}
-              accessibilityRole="tab"
-              accessibilityLabel={`Page ${index + 1} of ${pageCount}`}
-              accessibilityState={{ selected: index === currentPage }}
-            />
-          ))}
+          {pages.map((page, index) => {
+            const isActive = index === currentPage;
+            return (
+              <View
+                key={page.id}
+                style={[
+                  styles.dot,
+                  isActive && styles.dotActive,
+                  {
+                    backgroundColor: isActive
+                      ? colors.accent
+                      : colors.textSecondary + '44',
+                  },
+                ]}
+                accessibilityRole="tab"
+                accessibilityLabel={`Page ${index + 1} of ${pageCount}`}
+                accessibilityState={{ selected: isActive }}
+              />
+            );
+          })}
         </View>
       )}
 
@@ -260,6 +363,19 @@ export function HomeScreen({ onNavigateSettings, onEditButton }: HomeScreenProps
           onButtonLongPress={handleButtonLongPress}
         />
       )}
+
+      {/* Trackpad overlay (v1.2.0+, polished v1.2.1) */}
+      <TrackpadOverlay
+        visible={!!trackpad}
+        colors={colors}
+        client={client}
+        sensitivity={trackpad?.sensitivity}
+        naturalScroll={trackpad?.naturalScroll}
+        haptics={trackpad?.haptics}
+        accelCurve={trackpad?.accelCurve}
+        lockToPrimary={trackpad?.lockToPrimary}
+        onClose={() => setTrackpad(null)}
+      />
     </View>
   );
 }
@@ -350,6 +466,11 @@ const styles = StyleSheet.create({
   },
   dot: {
     width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    width: 22,
     height: 8,
     borderRadius: 4,
   },

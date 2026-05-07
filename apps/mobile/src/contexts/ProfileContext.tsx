@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ProfileConfig } from '@luminadeck/shared';
+import { TELEMETRY_EVENTS } from '@luminadeck/shared';
+import { track } from '../lib/telemetry';
+import { buildPinnedTilesPayload, suggestPinnedTiles, writePinnedTiles } from '../lib/widgetSync';
+import { buildWatchTilesPayload, pushWatchTiles } from '../lib/watchBridge';
 
 const PROFILES_KEY = '@luminadeck/profiles';
 const ACTIVE_PROFILE_KEY = '@luminadeck/active_profile';
@@ -12,6 +16,12 @@ interface ProfileContextValue {
   setActiveProfile: (id: string) => void;
   createProfile: (name: string) => ProfileConfig;
   updateProfile: (profile: ProfileConfig) => void;
+  /**
+   * Add-or-replace a profile (match on id). Used by the Studio push flow:
+   * when a remote profile_update arrives with an unknown id, the profile
+   * is appended and activated; otherwise the existing row is overwritten.
+   */
+  upsertProfile: (profile: ProfileConfig, activate?: boolean) => void;
   deleteProfile: (id: string) => void;
   duplicateProfile: (id: string) => ProfileConfig | null;
 }
@@ -23,6 +33,7 @@ const ProfileContext = createContext<ProfileContextValue>({
   setActiveProfile: () => {},
   createProfile: () => ({ id: '', name: '', pages: [], theme: 'obsidian', createdAt: '', updatedAt: '' }),
   updateProfile: () => {},
+  upsertProfile: () => {},
   deleteProfile: () => {},
   duplicateProfile: () => null,
 });
@@ -93,6 +104,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     const profile = createDefaultProfile(name);
     const updated = [...profiles, profile];
     persist(updated);
+    track(TELEMETRY_EVENTS.PROFILE_CREATE, {});
     return profile;
   }, [profiles, persist]);
 
@@ -101,6 +113,18 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       p.id === profile.id ? { ...profile, updatedAt: new Date().toISOString() } : p,
     );
     persist(updated);
+  }, [profiles, persist]);
+
+  const upsertProfile = useCallback((profile: ProfileConfig, activate: boolean = false) => {
+    const existing = profiles.some((p) => p.id === profile.id);
+    const updated = existing
+      ? profiles.map((p) => (p.id === profile.id ? profile : p))
+      : [...profiles, profile];
+    persist(updated);
+    if (!existing || activate) {
+      setActiveProfileId(profile.id);
+      AsyncStorage.setItem(ACTIVE_PROFILE_KEY, profile.id);
+    }
   }, [profiles, persist]);
 
   const deleteProfile = useCallback((id: string) => {
@@ -137,6 +161,17 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0] ?? null;
 
+  // v1.4: keep the iOS widget App Group + Apple Watch in sync with the
+  // current active profile. Both sync calls no-op on Android and on iOS
+  // builds where the native bridges aren't wired yet, so this is safe to
+  // run unconditionally on every active-profile change.
+  useEffect(() => {
+    if (!activeProfile) return;
+    const buttons = suggestPinnedTiles(activeProfile);
+    void writePinnedTiles(buildPinnedTilesPayload(buttons));
+    void pushWatchTiles(buildWatchTilesPayload(buttons));
+  }, [activeProfile]);
+
   return (
     <ProfileContext.Provider
       value={{
@@ -146,6 +181,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         setActiveProfile,
         createProfile,
         updateProfile,
+        upsertProfile,
         deleteProfile,
         duplicateProfile,
       }}

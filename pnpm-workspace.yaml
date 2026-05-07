@@ -1,3 +1,12 @@
 packages:
   - "apps/*"
   - "packages/*"
+overrides:
+  # Pin xmldom to the patched 0.8 line. 0.8.13 has the current CVE fixes,
+  # but 0.9.x
+  # makes mimeType required and breaks @expo/plist's parseFromString
+  # (TypeError: mimeType "undefined" is not valid). Codex's earlier
+  # `>=0.8.13` resolved to 0.9.x; this exact pin keeps prebuild working.
+  '@xmldom/xmldom': '0.8.13'
+  postcss@<8.5.10: '>=8.5.10'
+  uuid@<14.0.0: '>=14.0.0'

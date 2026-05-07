@@ -68,6 +68,37 @@ const sunsetColors: ThemeColors = {
   statusGreen: '#6BCB77', statusYellow: '#FFD93D', statusRed: '#FF6B6B',
 };
 
+// ── v1.3.0 Pack Themes ──────────────────────
+//
+// Each pack ships with a matching theme so installing a pack also gives
+// the deck a visual identity that fits the niche. Theme IDs match pack IDs
+// (`chaos` ↔ Soundboard, `neon-rgb` ↔ OBS Streaming, `monokai` ↔ Coder,
+// `lofi` ↔ Ableton/FL DAW packs).
+
+const chaosColors: ThemeColors = {
+  background: '#1A0033', buttonBackground: '#2D0066', buttonBorder: '#FF00AA',
+  accent: '#FF00AA', accentSecondary: '#00FFD9', text: '#FFFFFF', textSecondary: '#FFAADD',
+  statusGreen: '#00FFD9', statusYellow: '#FFEE00', statusRed: '#FF0066',
+};
+
+const neonRgbColors: ThemeColors = {
+  background: '#0A0014', buttonBackground: '#16002D', buttonBorder: '#9D4EDD',
+  accent: '#7B2FF7', accentSecondary: '#FF1493', text: '#F8F0FF', textSecondary: '#B79EFF',
+  statusGreen: '#39FF14', statusYellow: '#FFFF00', statusRed: '#FF0040',
+};
+
+const monokaiColors: ThemeColors = {
+  background: '#272822', buttonBackground: '#3E3D32', buttonBorder: '#75715E',
+  accent: '#A6E22E', accentSecondary: '#F92672', text: '#F8F8F2', textSecondary: '#75715E',
+  statusGreen: '#A6E22E', statusYellow: '#FD971F', statusRed: '#F92672',
+};
+
+const lofiColors: ThemeColors = {
+  background: '#1F1A2E', buttonBackground: '#2D2540', buttonBorder: '#5C4F7C',
+  accent: '#E5B0F9', accentSecondary: '#F4A261', text: '#F1ECEC', textSecondary: '#9C8FAE',
+  statusGreen: '#A8DADC', statusYellow: '#F4A261', statusRed: '#E76F51',
+};
+
 // ── Light Themes ────────────────────────────
 
 const daylightColors: ThemeColors = {
@@ -115,6 +146,23 @@ export const THEMES: Record<string, ThemeConfig> = {
   cream:       { id: 'cream', name: 'Cream', colors: creamColors, iconPack: 'default' },
   arctic:      { id: 'arctic', name: 'Arctic', colors: arcticColors, iconPack: 'default' },
   mint:        { id: 'mint', name: 'Mint', colors: mintColors, iconPack: 'default' },
+  // v1.3.0 Pack Themes (Pro) ────────────────────────────────────────
+  chaos: {
+    id: 'chaos', name: 'Chaos', colors: chaosColors, iconPack: 'default',
+    tileShape: 'pill', accentGlow: '#FF00AA', mood: 'chaotic',
+  },
+  'neon-rgb': {
+    id: 'neon-rgb', name: 'Neon RGB', colors: neonRgbColors, iconPack: 'default',
+    tileShape: 'rounded', accentGlow: '#7B2FF7', mood: 'energetic',
+  },
+  monokai: {
+    id: 'monokai', name: 'Monokai', colors: monokaiColors, iconPack: 'default',
+    tileShape: 'square', mood: 'pro',
+  },
+  lofi: {
+    id: 'lofi', name: 'Lo-Fi', colors: lofiColors, iconPack: 'default',
+    tileShape: 'squircle', mood: 'calm',
+  },
 };
 
 export const FREE_THEME_IDS = ['obsidian'] as const;

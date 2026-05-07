@@ -89,18 +89,17 @@ export function ConnectScreen() {
       return;
     }
 
-    connect(trimmedIp, portNum);
-
-    // Save as paired device
     const deviceId = `${trimmedIp}:${portNum}`;
-    savePairedDevice({
-      id: deviceId,
-      name: `PC at ${trimmedIp}`,
-      ip: trimmedIp,
-      port: portNum,
-      certFingerprint: '', // Will be populated after TLS handshake
-      pairedAt: new Date().toISOString(),
-    });
+    const saved = pairedDevices.find((d) => d.id === deviceId);
+    if (!saved?.pairingSecret) {
+      Alert.alert(
+        'QR Pairing Required',
+        'Manual connect is available after this PC has been paired once. Scan the QR code shown in LuminaDeck Companion first.',
+      );
+      return;
+    }
+
+    connect(trimmedIp, portNum, saved.pairingSecret);
   }, [ipAddress, port, connect, pairedDevices]);
 
   const handleDisconnect = useCallback(() => {
@@ -111,7 +110,7 @@ export function ConnectScreen() {
     (device: PairedDevice) => {
       setIpAddress(device.ip);
       setPort(String(device.port));
-      connect(device.ip, device.port);
+      connect(device.ip, device.port, device.pairingSecret);
     },
     [connect],
   );
@@ -143,7 +142,7 @@ export function ConnectScreen() {
       setShowQRScanner(false);
       setIpAddress(payload.ip);
       setPort(String(payload.port));
-      connect(payload.ip, payload.port);
+      connect(payload.ip, payload.port, payload.pairingSecret);
 
       const deviceId = `${payload.ip}:${payload.port}`;
       savePairedDevice({
@@ -152,6 +151,7 @@ export function ConnectScreen() {
         ip: payload.ip,
         port: payload.port,
         certFingerprint: payload.certFingerprint,
+        pairingSecret: payload.pairingSecret,
         pairedAt: new Date().toISOString(),
       });
     },
@@ -415,7 +415,7 @@ export function ConnectScreen() {
         <TouchableOpacity
           style={[styles.downloadButton, { borderColor: colors.accent }]}
           onPress={() => {
-            Linking.openURL('https://luminadeck.app/download');
+            Linking.openURL('https://luminaaio.com/luminadeck/download');
           }}
           accessibilityRole="link"
           accessibilityLabel="Download LuminaDeck Companion for Windows"

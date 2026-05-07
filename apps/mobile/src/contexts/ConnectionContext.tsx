@@ -1,20 +1,32 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { ConnectionStatus } from '@luminadeck/shared';
+import * as SecureStore from 'expo-secure-store';
+import type { ConnectionStatus, ProfileConfig } from '@luminadeck/shared';
+import { TELEMETRY_EVENTS } from '@luminadeck/shared';
 import { LuminaDeckClient } from '../lib/websocket';
+import { track } from '../lib/telemetry';
+import { useProfiles } from './ProfileContext';
+import {
+  subscribeWatchTaps,
+  subscribeWatchMouseMove,
+  subscribeWatchMouseClick,
+  subscribeWatchScroll,
+  subscribeWatchTextInput,
+} from '../lib/watchBridge';
+import { isClipboardSyncEnabled, startClipboardSync } from '../lib/clipboardSync';
 
 const LAST_CONNECTION_KEY = '@luminadeck/last_connection';
 
 interface LastConnection {
   ip: string;
   port: number;
+  pairingSecret?: string;
 }
 
 interface ConnectionContextValue {
   status: ConnectionStatus;
   client: LuminaDeckClient;
   connectedIp: string | null;
-  connect: (ip: string, port: number) => void;
+  connect: (ip: string, port: number, pairingSecret?: string) => void;
   disconnect: () => void;
 }
 
@@ -32,6 +44,7 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [connectedIp, setConnectedIp] = useState<string | null>(null);
   const clientRef = useRef(clientInstance);
+  const { upsertProfile } = useProfiles();
 
   useEffect(() => {
     const unsubscribe = clientRef.current.onStatus((newStatus) => {
@@ -40,15 +53,96 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
     return unsubscribe;
   }, []);
 
+  // Apply Studio-pushed profile updates to local storage + activate the
+  // profile so HomeScreen immediately reflects the new deck layout. Also
+  // honour `profile_switch` from the auto-profile matcher.
+  const { setActiveProfile, activeProfile } = useProfiles();
+  const activeProfileRef = useRef<ProfileConfig | null>(activeProfile);
+  useEffect(() => {
+    activeProfileRef.current = activeProfile;
+  }, [activeProfile]);
+
+  // v1.4: relay Watch events to the WS. Each subscription is wired only
+  // once for the lifetime of the provider — they read the active profile
+  // through a ref so they pick up edits without resubscribing.
+  useEffect(() => {
+    const send = (msg: any) => {
+      if (status === 'connected') clientRef.current.send(msg);
+    };
+    const unsubs = [
+      subscribeWatchTaps((buttonId) => {
+        const profile = activeProfileRef.current;
+        if (!profile) return;
+        for (const page of profile.pages) {
+          const button = page.buttons.find((b) => b.id === buttonId);
+          if (button?.action) {
+            send({
+              type: 'execute',
+              id: `watch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              action: button.action,
+            });
+            return;
+          }
+        }
+      }),
+      subscribeWatchMouseMove(({ dx, dy }) => send({ type: 'mouse_move', dx, dy })),
+      subscribeWatchMouseClick((button) => send({ type: 'mouse_click', button, state: 'click' })),
+      subscribeWatchScroll((ticks) => send({ type: 'mouse_scroll', dy: ticks })),
+      subscribeWatchTextInput((text) => {
+        send({
+          type: 'execute',
+          id: `watch-text-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          action: { type: 'text_input', text },
+        });
+      }),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [status]);
+
+  // v1.4: clipboard sync — only runs when (a) connected and (b) the user
+  // has toggled it on in Settings. The handle is stopped on disconnect
+  // so a stale poll doesn't keep firing into the void.
+  useEffect(() => {
+    if (status !== 'connected') return;
+    let handle: { stop: () => void } | null = null;
+    let cancelled = false;
+    void isClipboardSyncEnabled().then((enabled) => {
+      if (!enabled || cancelled) return;
+      handle = startClipboardSync(clientRef.current);
+    });
+    return () => {
+      cancelled = true;
+      handle?.stop();
+    };
+  }, [status]);
+
+  useEffect(() => {
+    const unsubscribe = clientRef.current.onMessage((msg) => {
+      if (msg.type === 'profile_update') {
+        const received = msg.profile as ProfileConfig;
+        if (!received || !received.id) return;
+        upsertProfile(received, true);
+      } else if (msg.type === 'profile_switch') {
+        if (msg.profileId) {
+          setActiveProfile(msg.profileId);
+          // Companion matcher fired; emits `profile_switch_auto` (no
+          // window-title or profile name in the payload per privacy rules).
+          track(TELEMETRY_EVENTS.PROFILE_SWITCH_AUTO, {});
+        }
+      }
+    });
+    return unsubscribe;
+  }, [upsertProfile, setActiveProfile]);
+
   // Auto-reconnect to last known PC on app launch
   useEffect(() => {
-    AsyncStorage.getItem(LAST_CONNECTION_KEY).then((raw) => {
+    SecureStore.getItemAsync(LAST_CONNECTION_KEY).then((raw) => {
       if (raw) {
         try {
           const last: LastConnection = JSON.parse(raw);
           if (last.ip && last.port) {
             setConnectedIp(last.ip);
-            clientRef.current.connect(last.ip, last.port);
+            clientRef.current.connect(last.ip, last.port, last.pairingSecret);
           }
         } catch {
           // Corrupted — ignore
@@ -57,19 +151,19 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
     });
   }, []);
 
-  const connect = useCallback((ip: string, port: number) => {
+  const connect = useCallback((ip: string, port: number, pairingSecret?: string) => {
     setConnectedIp(ip);
-    clientRef.current.connect(ip, port);
+    clientRef.current.connect(ip, port, pairingSecret);
 
-    // Persist for auto-reconnect
-    const data: LastConnection = { ip, port };
-    AsyncStorage.setItem(LAST_CONNECTION_KEY, JSON.stringify(data));
+    // Persist in SecureStore because the pairing secret authenticates PC control.
+    const data: LastConnection = { ip, port, pairingSecret };
+    SecureStore.setItemAsync(LAST_CONNECTION_KEY, JSON.stringify(data));
   }, []);
 
   const disconnect = useCallback(() => {
     setConnectedIp(null);
     clientRef.current.disconnect();
-    AsyncStorage.removeItem(LAST_CONNECTION_KEY);
+    SecureStore.deleteItemAsync(LAST_CONNECTION_KEY);
   }, []);
 
   return (

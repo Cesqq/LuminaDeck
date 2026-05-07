@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,12 @@ import {
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePro } from '../contexts/ProContext';
-import { getProPrice } from '../lib/iap';
+import { TELEMETRY_EVENTS } from '@luminadeck/shared';
+import { track } from '../lib/telemetry';
 
 interface PaywallScreenProps {
   visible: boolean;
   onClose: () => void;
-}
-
-interface PlanOption {
-  id: 'monthly' | 'yearly' | 'lifetime';
-  label: string;
-  price: string;
-  period: string;
-  badge?: string;
-  savings?: string;
 }
 
 const FREE_FEATURES = [
@@ -41,7 +33,6 @@ const PRO_FEATURES = [
   '50 pages',
   'All 15+ themes',
   'Custom layouts & iPad support',
-  'OBS Studio integration',
   'Discord controls',
   'Multi-action macros',
   'GIF icons via Giphy',
@@ -54,37 +45,16 @@ const PRO_FEATURES = [
 
 export function PaywallScreen({ visible, onClose }: PaywallScreenProps) {
   const { colors } = useTheme();
-  const { purchase, restore, isPurchasing, isRestoring } = usePro();
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'lifetime'>('yearly');
-  const [prices, setPrices] = useState<Record<string, string>>({
-    monthly: '$1.99',
-    yearly: '$14.99',
-    lifetime: '$29.99',
-  });
+  const { purchase, restore, isPurchasing, isRestoring, priceString } = usePro();
 
-  const plans: PlanOption[] = [
-    {
-      id: 'monthly',
-      label: 'Monthly',
-      price: prices.monthly,
-      period: '/month',
-    },
-    {
-      id: 'yearly',
-      label: 'Yearly',
-      price: prices.yearly,
-      period: '/year',
-      badge: 'BEST VALUE',
-      savings: 'Save 37%',
-    },
-    {
-      id: 'lifetime',
-      label: 'Lifetime',
-      price: prices.lifetime,
-      period: 'one-time',
-    },
-  ];
-
+  // Telemetry: paywall_view fires on each modal open (not on re-render).
+  // Source is 'settings' for now — when the paywall is launched from other
+  // surfaces (e.g., a locked theme tap), the caller can pass a source prop.
+  useEffect(() => {
+    if (visible) {
+      track(TELEMETRY_EVENTS.PAYWALL_VIEW, { source: 'settings' });
+    }
+  }, [visible]);
   const handlePurchase = useCallback(async () => {
     await purchase();
     onClose();
@@ -136,46 +106,31 @@ export function PaywallScreen({ visible, onClose }: PaywallScreenProps) {
 
           {/* Plan Cards */}
           <View style={styles.plansRow}>
-            {plans.map((plan) => {
-              const isSelected = selectedPlan === plan.id;
-              return (
-                <TouchableOpacity
-                  key={plan.id}
-                  style={[
-                    styles.planCard,
-                    {
-                      backgroundColor: isSelected ? colors.accent + '15' : colors.buttonBackground,
-                      borderColor: isSelected ? colors.accent : colors.buttonBorder,
-                      borderWidth: isSelected ? 2 : 1,
-                    },
-                  ]}
-                  onPress={() => setSelectedPlan(plan.id)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={`${plan.label} plan, ${plan.price} ${plan.period}`}
-                >
-                  {plan.badge && (
-                    <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-                      <Text style={styles.badgeText}>{plan.badge}</Text>
-                    </View>
-                  )}
-                  <Text style={[styles.planLabel, { color: colors.text }]}>
-                    {plan.label}
-                  </Text>
-                  <Text style={[styles.planPrice, { color: colors.accent }]}>
-                    {plan.price}
-                  </Text>
-                  <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>
-                    {plan.period}
-                  </Text>
-                  {plan.savings && (
-                    <Text style={[styles.planSavings, { color: colors.statusGreen }]}>
-                      {plan.savings}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            <View
+              style={[
+                styles.planCard,
+                {
+                  backgroundColor: colors.accent + '15',
+                  borderColor: colors.accent,
+                  borderWidth: 2,
+                },
+              ]}
+              accessibilityRole="text"
+              accessibilityLabel={`Lifetime Pro, ${priceString}, one-time purchase`}
+            >
+              <View style={[styles.badge, { backgroundColor: colors.accent }]}>
+                <Text style={styles.badgeText}>ONE-TIME</Text>
+              </View>
+              <Text style={[styles.planLabel, { color: colors.text }]}>
+                Lifetime Pro
+              </Text>
+              <Text style={[styles.planPrice, { color: colors.accent }]}>
+                {priceString}
+              </Text>
+              <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>
+                one-time
+              </Text>
+            </View>
           </View>
 
           {/* Feature Comparison */}
@@ -215,15 +170,13 @@ export function PaywallScreen({ visible, onClose }: PaywallScreenProps) {
             onPress={handlePurchase}
             disabled={isLoading}
             accessibilityRole="button"
-            accessibilityLabel={`Subscribe to ${selectedPlan} plan`}
+            accessibilityLabel="Buy Lifetime Pro"
           >
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.purchaseButtonText}>
-                {selectedPlan === 'lifetime'
-                  ? `Get Lifetime Pro \u2014 ${prices.lifetime}`
-                  : `Start Pro \u2014 ${prices[selectedPlan]}${selectedPlan === 'monthly' ? '/mo' : '/yr'}`}
+                Get Lifetime Pro — {priceString}
               </Text>
             )}
           </TouchableOpacity>
@@ -241,7 +194,7 @@ export function PaywallScreen({ visible, onClose }: PaywallScreenProps) {
           </TouchableOpacity>
 
           <Text style={[styles.legalText, { color: colors.textSecondary }]}>
-            Cancel anytime. Subscriptions auto-renew unless cancelled 24 hours before the end of the current period.
+            One-time in-app purchase. No subscription or auto-renewal.
           </Text>
         </View>
       </View>

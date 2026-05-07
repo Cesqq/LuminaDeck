@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download LuminaDeck Studio — Windows Companion</title>
+<meta name="description" content="Download the LuminaDeck Studio companion app for Windows. Pairs with the LuminaDeck iPhone app for a zero-latency macro deck.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <a class="logo" href="/luminadeck">Lumina<span>Deck</span></a>
+        <nav>
+            <a href="/luminadeck/download">Download</a>
+            <a href="/luminadeck/privacy">Privacy</a>
+            <a href="mailto:luminadeck@luminaaio.com">Contact</a>
+        </nav>
+    </header>
+
+    <section class="hero" style="padding-bottom: 24px;">
+        <h1>Download <span class="highlight">LuminaDeck Studio</span></h1>
+        <p class="lead">The Windows companion that receives button presses from your iPhone and fires real shortcuts. Install once, pair via QR code, never reopen it again.</p>
+    </section>
+
+    <section>
+        <div class="download-option">
+            <div class="info">
+                <h3>Microsoft Store (recommended)</h3>
+                <p>Auto-updating, sandboxed, runs on Windows 10 2004 and up. Free.</p>
+            </div>
+            <a class="btn primary" href="https://apps.microsoft.com/detail/CZRE.LuminaDeck">Get it from Microsoft</a>
+        </div>
+
+        <div class="download-option">
+            <div class="info">
+                <h3>Standalone installer (MSI)</h3>
+                <p>Plain .msi. For corporate environments or if you prefer not to use the Store. Windows 10 2004+ / Windows 11.</p>
+            </div>
+            <a class="btn" href="#" onclick="alert('MSI installer will be available on the first release. Use the Microsoft Store link above until then.'); return false;">Download .msi</a>
+        </div>
+
+        <div class="download-option">
+            <div class="info">
+                <h3>NSIS installer (.exe)</h3>
+                <p>Lightweight Windows installer. Same app, different packager.</p>
+            </div>
+            <a class="btn" href="#" onclick="alert('NSIS installer will be available on the first release. Use the Microsoft Store link above until then.'); return false;">Download .exe</a>
+        </div>
+    </section>
+
+    <section style="margin-top: 48px;">
+        <h2 style="font-size: 22px;">After install</h2>
+        <ol style="color: var(--text-dim); padding-left: 24px; line-height: 1.7;">
+            <li>Launch LuminaDeck Studio. It sits in your system tray.</li>
+            <li>On your iPhone, install <a href="https://apps.apple.com/app/id6762442797">LuminaDeck from the App Store</a>.</li>
+            <li>Open the phone app, tap <strong>Connect</strong>, and scan the QR code Studio shows.</li>
+            <li>That's it. Tap tiles on your phone, fire macros on your PC.</li>
+        </ol>
+    </section>
+
+    <section style="margin-top: 48px;">
+        <h2 style="font-size: 22px;">System requirements</h2>
+        <ul style="color: var(--text-dim); padding-left: 24px; line-height: 1.7;">
+            <li>Windows 10 version 2004 or later / Windows 11 (x64)</li>
+            <li>~40 MB disk, ~60 MB RAM while running</li>
+            <li>Local WiFi network shared with your iPhone</li>
+            <li>Firewall inbound on ports 9876 and 9877 for authenticated local pairing/control</li>
+        </ul>
+    </section>
+
+    <footer>
+        <div>© 2026 LuminaDeck</div>
+        <div>
+            <a href="/luminadeck">Home</a>&nbsp;·&nbsp;
+            <a href="/luminadeck/privacy">Privacy</a>&nbsp;·&nbsp;
+            <a href="mailto:luminadeck@luminaaio.com">luminadeck@luminaaio.com</a>
+        </div>
+    </footer>
+</div>
+</body>
+</html>

@@ -17,10 +17,10 @@ iPhone macro deck + Windows companion app. iOS + Windows + Android.
 cd apps/companion/src-tauri && cargo build --release
 cd apps/companion && npx tauri build  # Creates NSIS + MSI installers
 
-# Android
+# Android — Android Studio is the only path
 cd apps/mobile && npx expo prebuild --platform android
-# Then open android/ in Android Studio, or:
-cd apps/mobile && eas build --platform android --profile preview --non-interactive
+# Then open android/ in Android Studio:
+#   Build → Generate Signed Bundle / APK → Android App Bundle → release
 
 # Tests
 pnpm test  # or: npx turbo run test typecheck
@@ -28,51 +28,48 @@ pnpm test  # or: npx turbo run test typecheck
 
 ### Mac (macOS) — iOS Builds
 The Mac at `rsaczr@10.0.0.50` is the iOS build machine. SSH is configured.
+**Pipeline is Xcode-only — no `eas-cli` for build, submit, or credentials.**
 
+From the PC, two scripts drive the whole flow:
 ```bash
-# From PC, sync code to Mac:
-cd /path/to/LuminaDeck
-tar czf /tmp/ld-sync.tar.gz --exclude='node_modules' --exclude='target' --exclude='.git' --exclude='.keys' --exclude='*.msix' --exclude='*.exe' --exclude='*.msi' apps/mobile packages/shared package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json turbo.json
-scp /tmp/ld-sync.tar.gz rsaczr@10.0.0.50:/tmp/
-ssh rsaczr@10.0.0.50 'cd ~/LuminaDeck && tar xzf /tmp/ld-sync.tar.gz'
+# 1. Sync source + ASC API key to Mac
+bash scripts/sync-to-mac.sh
 
-# On Mac, build iOS:
-export PATH=$HOME/.local/bin:$PATH
-eval "$(/opt/homebrew/bin/brew shellenv)"
-export LANG=en_US.UTF-8
-export EXPO_TOKEN=p3A3wnMLFfMrZVMpAWDhf3kwLtFdbWH1S0fn5owr
-cd ~/LuminaDeck/apps/mobile
-pnpm install
-npx expo prebuild --platform ios --clean
-cd ios && pod install && cd ..
-npx eas-cli build --platform ios --profile preview --local --non-interactive --output ~/LuminaDeck-build.ipa
-
-# Submit to TestFlight (from PC or Mac):
-npx eas-cli submit --platform ios --path ~/LuminaDeck-build.ipa --non-interactive
+# 2. Trigger archive + upload to App Store Connect via SSH
+ssh rsaczr@10.0.0.50 'bash ~/LuminaDeck/scripts/ios-archive-and-upload.sh'
 ```
 
-**IMPORTANT**: Before local iOS build, unlock the keychain on Mac:
+The archive script runs `pnpm install`, `expo prebuild --platform ios --clean`,
+`pod install`, then `xcodebuild archive` and `xcodebuild -exportArchive` with
+`destination=upload` so the IPA goes straight to App Store Connect via the ASC
+API key at `~/.keys/AuthKey_5G4BLJ82KH.p8`. From there, finish in App Store
+Connect → TestFlight or submit for review.
+
+**One-time human prereqs on the Mac:**
+1. Xcode → Settings → Accounts → Apple ID signed in
+2. Manage Certificates → "+" → **Apple Distribution** (for App Store builds)
+3. App Store provisioning profile auto-downloads after the cert exists
+
+**If the keychain locks during archive:**
 ```bash
 security unlock-keychain ~/Library/Keychains/login.keychain-db
 security set-keychain-settings -t 7200 ~/Library/Keychains/login.keychain-db
 ```
 
 ### Credentials & Secrets
-- **EAS Project**: @iczr/luminadeck (5487c725-c788-4978-a67e-1da84e7c172e)
 - **Apple Team**: 7A2K2PDKW4 (Ceasar Esquivel, Individual)
 - **ASC App ID**: 6762442797
 - **ASC API Key**: .keys/AuthKey_5G4BLJ82KH.p8 (NEVER commit)
 - **ASC API Key ID**: 5G4BLJ82KH
 - **ASC Issuer ID**: b9dc67a7-763a-4031-aa71-ada7964eddd5
-- **EXPO_TOKEN**: stored in Mac env (never commit)
 - **Partner Center Publisher**: CN=24DA9F28-A632-4B32-AB31-FAD4EC93A0A2
 - **Partner Center Name**: CZRE.LuminaDeck
 - **Bundle ID**: com.luminadeck.app
 
 ### Distribution
-- **iOS**: App Store via EAS Build → TestFlight → App Store
+- **iOS**: App Store via Xcode archive → App Store Connect → TestFlight → App Store
 - **Windows**: Microsoft Store (MSIX, $19 Partner Center) — primary
-- **Android**: Google Play ($25 one-time)
+- **Android**: Google Play ($25 one-time) via Android Studio signed bundle
 - No EV code-signing cert needed — Store handles signing
 
 ## Testing

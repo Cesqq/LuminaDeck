@@ -19,13 +19,18 @@
       }
     },
     "production": {
+      "distribution": "store",
       "ios": {
         "buildConfiguration": "Release",
-        "autoIncrement": true
+        "autoIncrement": true,
+        "credentialsSource": "local"
       },
       "android": {
         "buildType": "app-bundle",
         "autoIncrement": true
+      },
+      "env": {
+        "EAS_NO_VCS": "1"
       }
     }
   },

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import type { ProStatus } from '@luminadeck/shared';
 import { FREE_LIMITS, PRO_LIMITS } from '@luminadeck/shared';
 import { loadProStatus, saveProStatus, clearProStatus } from '../lib/pro';
@@ -32,6 +32,9 @@ const defaultProStatus: ProStatus = {
   source: 'none',
 };
 
+const storeSource = (): ProStatus['source'] =>
+  Platform.OS === 'android' ? 'google_play' : 'apple_iap';
+
 const ProContext = createContext<ProContextValue>({
   isPro: false,
   proStatus: defaultProStatus,
@@ -56,14 +59,21 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
 
     // Initialize RevenueCat and sync entitlement
     configureIAP().then(async () => {
-      if (isIAPAvailable()) {
-        const price = await getProPrice();
-        setPriceString(price);
+      if (!isIAPAvailable()) {
+        // Production safety: a missing RevenueCat key must never unlock Pro.
+        clearProStatus();
+        setProStatus(defaultProStatus);
+        return;
+      }
 
-        const hasEntitlement = await checkProEntitlement();
-        if (hasEntitlement) {
-          setProStatus({ isPro: true, plan: 'lifetime', source: 'apple_iap' });
-        }
+      const price = await getProPrice();
+      setPriceString(price);
+
+      const hasEntitlement = await checkProEntitlement();
+      if (hasEntitlement) {
+        setProStatus({ isPro: true, plan: 'lifetime', source: storeSource() });
+      } else {
+        setProStatus(defaultProStatus);
       }
     });
   }, []);
@@ -79,9 +89,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
 
   const purchase = useCallback(async () => {
     if (!isIAPAvailable()) {
-      // Offline/dev mode: simulate purchase
-      setPro({ isPro: true, plan: 'lifetime', source: 'apple_iap', purchaseDate: new Date().toISOString() });
-      Alert.alert('Pro Activated', 'Pro features are now available (dev mode).');
+      Alert.alert('Purchase Unavailable', 'In-App Purchases are not configured for this build.');
       return;
     }
 
@@ -89,7 +97,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     try {
       const success = await purchasePro();
       if (success) {
-        setProStatus({ isPro: true, plan: 'lifetime', source: 'apple_iap', purchaseDate: new Date().toISOString() });
+        setPro({ isPro: true, plan: 'lifetime', source: storeSource(), purchaseDate: new Date().toISOString() });
         Alert.alert('Pro Activated', 'Thank you! All Pro features are now unlocked.');
       }
     } catch (e: any) {
@@ -109,7 +117,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     try {
       const found = await restorePurchases();
       if (found) {
-        setProStatus({ isPro: true, plan: 'lifetime', source: 'apple_iap', purchaseDate: new Date().toISOString() });
+        setPro({ isPro: true, plan: 'lifetime', source: storeSource(), purchaseDate: new Date().toISOString() });
         Alert.alert('Restored', 'Your Pro purchase has been restored.');
       } else {
         Alert.alert('No Purchase Found', 'No previous Pro purchase was found for this Apple ID.');
@@ -119,7 +127,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsRestoring(false);
     }
-  }, []);
+  }, [setPro]);
 
   const limits = proStatus.isPro ? PRO_LIMITS : FREE_LIMITS;
 

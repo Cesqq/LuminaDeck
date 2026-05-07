@@ -9,12 +9,14 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_PORT } from '@luminadeck/shared';
+import * as SecureStore from 'expo-secure-store';
+import { DEFAULT_PORT, type QRPairingPayload } from '@luminadeck/shared';
 import { useTheme } from '../contexts/ThemeContext';
 import { useConnection } from '../contexts/ConnectionContext';
 import { discovery, type DiscoveredCompanion } from '../lib/discovery';
+import { QRScannerModal } from '../components/QRScannerModal';
 
 const LAST_CONNECTION_KEY = '@luminadeck/last_connection';
 const SCAN_TIMEOUT_MS = 10_000;
@@ -23,6 +25,7 @@ interface LastConnection {
   ip: string;
   port: number;
   name?: string;
+  pairingSecret?: string;
 }
 
 interface ConnectionGateScreenProps {
@@ -45,6 +48,7 @@ export function ConnectionGateScreen({ onConnected }: ConnectionGateScreenProps)
   const [manualExpanded, setManualExpanded] = useState(false);
   const [manualIp, setManualIp] = useState('');
   const [manualPort, setManualPort] = useState(String(DEFAULT_PORT));
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   // Pulse animation
   const pulseAnim = useRef(new Animated.Value(0.6)).current;
@@ -54,7 +58,7 @@ export function ConnectionGateScreen({ onConnected }: ConnectionGateScreenProps)
 
   // Load last connection from storage
   useEffect(() => {
-    AsyncStorage.getItem(LAST_CONNECTION_KEY).then((raw) => {
+    SecureStore.getItemAsync(LAST_CONNECTION_KEY).then((raw) => {
       if (raw) {
         try {
           const parsed: LastConnection = JSON.parse(raw);
@@ -133,14 +137,22 @@ export function ConnectionGateScreen({ onConnected }: ConnectionGateScreenProps)
 
   const handleConnectTo = useCallback(
     (ip: string, port: number) => {
-      connect(ip, port);
+      if (lastConnection?.ip === ip && lastConnection?.port === port && lastConnection.pairingSecret) {
+        connect(ip, port, lastConnection.pairingSecret);
+        return;
+      }
+      Alert.alert(
+        'QR Pairing Required',
+        'For launch security, discovered PCs must be paired with the QR code before they can receive commands.',
+      );
+      setShowQRScanner(true);
     },
-    [connect],
+    [connect, lastConnection],
   );
 
   const handleReconnect = useCallback(() => {
     if (lastConnection) {
-      connect(lastConnection.ip, lastConnection.port);
+      connect(lastConnection.ip, lastConnection.port, lastConnection.pairingSecret);
     }
   }, [lastConnection, connect]);
 
@@ -155,8 +167,37 @@ export function ConnectionGateScreen({ onConnected }: ConnectionGateScreenProps)
 
     if (isNaN(portNum) || portNum < 1 || portNum > 65535) return;
 
-    connect(trimmedIp, portNum);
-  }, [manualIp, manualPort, connect]);
+    if (
+      lastConnection?.ip === trimmedIp &&
+      lastConnection?.port === portNum &&
+      lastConnection.pairingSecret
+    ) {
+      connect(trimmedIp, portNum, lastConnection.pairingSecret);
+      return;
+    }
+
+    Alert.alert(
+      'QR Pairing Required',
+      'Manual connect is available after this PC has been paired once. Scan the QR code shown in LuminaDeck Companion first.',
+    );
+    setShowQRScanner(true);
+  }, [manualIp, manualPort, connect, lastConnection]);
+
+  const handleQRPayload = useCallback(
+    (payload: QRPairingPayload) => {
+      setShowQRScanner(false);
+      const next: LastConnection = {
+        ip: payload.ip,
+        port: payload.port,
+        name: payload.companionName,
+        pairingSecret: payload.pairingSecret,
+      };
+      setLastConnection(next);
+      void SecureStore.setItemAsync(LAST_CONNECTION_KEY, JSON.stringify(next));
+      connect(payload.ip, payload.port, payload.pairingSecret);
+    },
+    [connect],
+  );
 
   const isConnecting = status === 'connecting';
 
@@ -440,9 +481,7 @@ export function ConnectionGateScreen({ onConnected }: ConnectionGateScreenProps)
         <TouchableOpacity
           style={[styles.qrButton, { borderColor: colors.accent }]}
           onPress={() => {
-            // QR scanner is handled by the existing QRScannerModal component
-            // For now, expand manual connect as fallback
-            setManualExpanded(true);
+            setShowQRScanner(true);
           }}
           accessibilityRole="button"
           accessibilityLabel="Scan QR code to connect"
@@ -469,6 +508,41 @@ export function ConnectionGateScreen({ onConnected }: ConnectionGateScreenProps)
           </Text>
         </View>
       )}
+
+      {/* Demo Mode escape hatch — required so first-launch reviewers (and
+          users without a paired PC yet) can fully explore the app. Without
+          this the Gate becomes a dead-end on launch day and Beta App
+          Review fails §2.1. Tapping it calls onConnected which moves the
+          app to the Home deck in offline/demo state; HomeScreen renders
+          the demo profile and shows a "Demo Mode" banner. */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={[styles.demoButton, { borderColor: colors.buttonBorder }]}
+          onPress={onConnected}
+          accessibilityRole="button"
+          accessibilityLabel="Continue without a PC in Demo Mode"
+        >
+          <Text
+            style={[styles.demoButtonText, { color: colors.textSecondary }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          >
+            Continue in Demo Mode
+          </Text>
+          <Text
+            style={[styles.demoButtonHint, { color: colors.textSecondary }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          >
+            Explore the app without a paired PC. No actions fire on any computer.
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <QRScannerModal
+        visible={showQRScanner}
+        onScan={handleQRPayload}
+        onClose={() => setShowQRScanner(false)}
+      />
     </ScrollView>
   );
 }
@@ -642,5 +716,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  demoButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  demoButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  demoButtonHint: {
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });

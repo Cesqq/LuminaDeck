@@ -64,7 +64,7 @@ export function isIAPAvailable(): boolean {
 }
 
 /**
- * Get the Pro package from the default offering.
+ * Get the one-time Lifetime Pro package from the default offering.
  * Returns null if not available or not configured.
  */
 export async function getProPackage(): Promise<PurchasesPackage | null> {
@@ -75,8 +75,9 @@ export async function getProPackage(): Promise<PurchasesPackage | null> {
     const current = offerings.current;
     if (!current) return null;
 
-    // Look for the lifetime or annual package
-    return current.lifetime ?? current.annual ?? current.availablePackages[0] ?? null;
+    // Launch model is one-time Lifetime Pro. Do not silently fall back to a
+    // subscription package; store copy and CTA promise a one-time purchase.
+    return current.lifetime ?? null;
   } catch (e) {
     console.error('[IAP] Failed to get offerings:', e);
     return null;
@@ -157,7 +158,7 @@ function checkEntitlement(customerInfo: CustomerInfo): boolean {
   const hasEntitlement = PRO_ENTITLEMENT in customerInfo.entitlements.active;
 
   if (hasEntitlement) {
-    saveProStatus(true, 'apple_iap');
+    saveProStatus(true, Platform.OS === 'android' ? 'google_play' : 'apple_iap');
   } else {
     clearProStatus();
   }

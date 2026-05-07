@@ -25,6 +25,8 @@ export interface AppSettings {
   hapticIntensity: HapticIntensity;
   pressSoundEnabled: boolean;
   proStatus: ProStatus;
+  telemetryOptIn: boolean;
+  predictorEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -33,6 +35,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   hapticIntensity: 'medium',
   pressSoundEnabled: false,
   proStatus: { isPro: false, plan: 'free', source: 'none' },
+  telemetryOptIn: false,
+  predictorEnabled: false,
 };
 
 // --- Haptic mapping ---

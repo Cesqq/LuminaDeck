@@ -86,8 +86,8 @@ export async function validateReceipt(
   environment: 'production' | 'sandbox' = 'production',
 ): Promise<{ valid: boolean; isPro: boolean }> {
   if (!isSupabaseConfigured()) {
-    // Offline mode: trust local receipt cache
-    return { valid: true, isPro: true };
+    // Fail closed: missing backend validation must never create a Pro grant.
+    return { valid: false, isPro: false };
   }
 
   const response = await fetch(

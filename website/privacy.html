@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — LuminaDeck</title>
+<meta name="description" content="LuminaDeck privacy policy. Local-first, no analytics unless you opt in, no third-party tracking.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <a class="logo" href="/luminadeck">Lumina<span>Deck</span></a>
+        <nav>
+            <a href="/luminadeck/download">Download</a>
+            <a href="/luminadeck/privacy">Privacy</a>
+            <a href="mailto:luminadeck@luminaaio.com">Contact</a>
+        </nav>
+    </header>
+
+    <article class="prose">
+        <h1>LuminaDeck Privacy Policy</h1>
+        <div class="meta">
+            <span><strong>Effective Date:</strong> April 2026</span>
+            <span><strong>Last Updated:</strong> April 2026</span>
+        </div>
+
+        <h2>Overview</h2>
+        <p>LuminaDeck ("the App") is a macro deck application that allows you to control your Windows PC from your iPhone over your local WiFi network. Your privacy is important to us. This policy explains what data we collect, how we use it, and your rights.</p>
+
+        <h2>Data We Collect</h2>
+
+        <h3>Data We Do NOT Collect</h3>
+        <ul>
+            <li>We do not collect analytics or usage telemetry by default (opt-in only, described below)</li>
+            <li>We do not track your location</li>
+            <li>We do not share any data with third parties for advertising</li>
+            <li>We do not use advertising SDKs</li>
+            <li>We do not record keystrokes or button presses</li>
+            <li>We do not access your contacts, messages, or other personal data</li>
+        </ul>
+
+        <h3>Data Stored Locally On Your Device</h3>
+        <p>The following data is stored only on your iPhone and your PC, never transmitted to our servers:</p>
+        <ul>
+            <li><strong>Button layouts and profiles</strong>: Your custom button configurations are saved to your device's local storage</li>
+            <li><strong>Connection history</strong>: IP addresses of paired PCs are stored in your device's secure keychain</li>
+            <li><strong>Settings preferences</strong>: Theme, haptic feedback, and grid layout preferences</li>
+            <li><strong>TLS certificates</strong>: Self-signed certificates for secure local communication</li>
+            <li><strong>Smart Page predictions</strong>: If you enable the Smart Page feature, we learn which tiles you press in sequence. This model stays entirely on your device and never leaves it.</li>
+        </ul>
+
+        <h3>Data We May Collect (Opt-in only)</h3>
+        <p>If you flip the "Share anonymous usage" switch in Settings → Privacy:</p>
+        <ul>
+            <li><strong>Action-type counts</strong> (e.g., how many keybind vs OBS actions you fire) and session durations. Never includes tile labels, window titles, or any text you type.</li>
+            <li><strong>Device identifier</strong>: A randomly-generated salt that rotates every 90 days. Not tied to your Apple ID or any PII.</li>
+            <li>Data is hosted in the EU via PostHog. IP is stripped at the client.</li>
+        </ul>
+        <p>You can opt out at any time from Settings → Privacy. Existing data becomes unreachable when your salt rotates.</p>
+
+        <p>If you purchase Pro, we also receive:</p>
+        <ul>
+            <li><strong>Purchase receipt</strong>: Apple In-App Purchase transaction ID, validated for license entitlement via RevenueCat. We see the transaction ID only — not your Apple ID or payment info.</li>
+        </ul>
+
+        <h2>Network Communication</h2>
+        <ul>
+            <li>All communication between your iPhone and PC occurs over your <strong>local WiFi network only</strong></li>
+            <li>Core PC control requires <strong>QR-paired device authentication</strong> on your local WiFi network</li>
+            <li>No data is routed through our servers or any cloud relay for core functionality</li>
+            <li>mDNS discovery is used only during device pairing and is stopped once pairing completes</li>
+        </ul>
+
+        <h2>Third-Party Services</h2>
+        <ul>
+            <li><strong>Apple In-App Purchase</strong>: Used for Pro upgrade processing. Subject to Apple's privacy policy.</li>
+            <li><strong>RevenueCat</strong>: Used for purchase receipt validation. RevenueCat processes only your anonymous App Store transaction data. See <a href="https://www.revenuecat.com/privacy">RevenueCat's privacy policy</a>.</li>
+            <li><strong>PostHog (EU)</strong>: Used only if you opt in to analytics. Hosted in the EU. See <a href="https://posthog.com/privacy">PostHog's privacy policy</a>.</li>
+            <li><strong>Supabase</strong>: Used for optional cloud sync if enabled. See <a href="https://supabase.com/privacy">Supabase's privacy policy</a>.</li>
+        </ul>
+
+        <h2>Children's Privacy</h2>
+        <p>LuminaDeck does not knowingly collect personal information from children under 13. The App is rated 4+ and contains no objectionable content.</p>
+
+        <h2>Data Retention</h2>
+        <ul>
+            <li>Local data is retained until you delete it or uninstall the App</li>
+            <li>Account data (if created) is retained until you request deletion</li>
+            <li>Purchase history is maintained by Apple per their retention policies</li>
+        </ul>
+
+        <h2>Your Rights</h2>
+        <ul>
+            <li><strong>Access</strong>: View all data stored by the App (visible in Settings)</li>
+            <li><strong>Delete</strong>: Remove all local data by uninstalling the App</li>
+            <li><strong>Account deletion</strong>: Request deletion of any account data by contacting us</li>
+            <li><strong>Export</strong>: Export your button profiles as JSON files</li>
+        </ul>
+
+        <h2>Changes to This Policy</h2>
+        <p>We may update this policy from time to time. Changes will be posted on this page and reflected in the "Last Updated" date above.</p>
+
+        <h2>Contact</h2>
+        <p>For privacy questions or data deletion requests:</p>
+        <ul>
+            <li>Email: <a href="mailto:luminadeck@luminaaio.com">luminadeck@luminaaio.com</a></li>
+            <li>Web: <a href="https://luminaaio.com/luminadeck/privacy">luminaaio.com/luminadeck/privacy</a></li>
+        </ul>
+    </article>
+
+    <footer>
+        <div>© 2026 LuminaDeck</div>
+        <div>
+            <a href="/luminadeck">Home</a>&nbsp;·&nbsp;
+            <a href="/luminadeck/download">Download</a>&nbsp;·&nbsp;
+            <a href="mailto:luminadeck@luminaaio.com">luminadeck@luminaaio.com</a>
+        </div>
+    </footer>
+</div>
+</body>
+</html>

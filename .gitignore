@@ -69,3 +69,18 @@ coverage/
 *.csr
 credentials.json
 secrets.json
+
+# Debug / diagnostic temp artifacts
+.tmp-analysis/
+.tmp-rn-compare/
+.crash-tmp.ips
+.sim-build*.png
+.sim-shot*.png
+
+# MSIX build artifacts (root staging)
+LuminaDeckStudio.msix
+
+# Local SQLite (posteverywhere agent DB)
+posteverywhere.db
+posteverywhere.db-shm
+posteverywhere.db-wal

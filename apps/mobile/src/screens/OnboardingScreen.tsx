@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 
 const ONBOARDING_KEY = '@luminadeck/onboarding_complete';
-const DOWNLOAD_URL = 'https://luminadeck.app/download';
+const DOWNLOAD_URL = 'https://luminaaio.com/luminadeck/download';
 const TOTAL_STEPS = 3;
 
 interface OnboardingScreenProps {
@@ -29,7 +29,7 @@ const STEPS: StepContent[] = [
   {
     title: 'Welcome to LuminaDeck',
     body:
-      'Turn your iPhone into a powerful macro deck for your Windows PC. ' +
+      'Turn your phone into a powerful macro deck for your Windows PC. ' +
       'Launch apps, trigger keyboard shortcuts, control media, and more ' +
       '\u2014 all with a single tap.',
     icon: '\uD83C\uDFAE', // game controller emoji

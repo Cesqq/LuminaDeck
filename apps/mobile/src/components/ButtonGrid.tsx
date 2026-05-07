@@ -8,7 +8,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import type { ButtonConfig, GridLayout } from '@luminadeck/shared';
 import { GRID_DIMENSIONS } from '@luminadeck/shared';
-import { ButtonCell } from './ButtonCell';
+import { ButtonCell, type CellGesture } from './ButtonCell';
 import type { ThemeColors } from '@luminadeck/shared';
 
 interface ButtonGridProps {
@@ -19,6 +19,7 @@ interface ButtonGridProps {
   onPress: (button: ButtonConfig) => void;
   onLongPress: (button: ButtonConfig) => void;
   onEmptyPress?: (position: number) => void;
+  onGesture?: (button: ButtonConfig, gesture: CellGesture) => void;
 }
 
 export function ButtonGrid({
@@ -29,6 +30,7 @@ export function ButtonGrid({
   onPress,
   onLongPress,
   onEmptyPress,
+  onGesture,
 }: ButtonGridProps) {
   const { cols, rows } = GRID_DIMENSIONS[layout];
   const totalSlots = cols * rows;
@@ -69,6 +71,7 @@ export function ButtonGrid({
           colors={colors}
           onPress={button ? () => handlePress(button) : onEmptyPress ? () => onEmptyPress(index) : undefined}
           onLongPress={button ? () => onLongPress(button) : undefined}
+          onGesture={button && onGesture ? (g) => onGesture(button, g) : undefined}
         />
       ))}
     </View>

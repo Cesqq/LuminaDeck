@@ -35,7 +35,7 @@ EAS will prompt for your Google Play Service Account key. Set this up:
 Turn your phone into a customizable macro deck for your Windows PC.
 
 **Full description**:
-LuminaDeck turns your phone into a powerful macro deck for controlling your Windows PC over secure local WiFi.
+LuminaDeck turns your phone into a powerful macro deck for controlling your Windows PC over authenticated local WiFi.
 
 Create custom button grids to execute keyboard shortcuts, launch applications, control media playback, adjust volume, take screenshots, and trigger multi-action sequences — all with a single tap.
 
@@ -47,16 +47,16 @@ Features:
 - Haptic feedback on every button press
 - QR code pairing for instant setup
 - Manual IP connection for corporate networks
-- TLS 1.3 encrypted local communication
+- QR pairing with per-device authentication
 - Demo mode — try it without a PC
 
-Free tier includes 8 buttons, 1 page, and 1 theme. Upgrade to Pro ($9.99 one-time) for unlimited pages, all themes, custom images, and multi-action buttons.
+Free tier includes 12 buttons, 2 pages, and 1 theme. Upgrade to Pro ($9.99 one-time) for 64 action keys, 50 pages, all themes, custom images, and multi-action buttons.
 
 Requires the free LuminaDeck Companion app on your Windows PC.
 
 **Category**: Tools
 **Content rating**: Everyone
-**Privacy policy**: https://luminadeck.app/privacy
+**Privacy policy**: https://luminaaio.com/luminadeck/privacy
 
 ## Timeline
 
