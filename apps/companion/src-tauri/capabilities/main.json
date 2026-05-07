@@ -6,6 +6,10 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
-    "core:tray:default"
+    "core:tray:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-confirm"
   ]
 }

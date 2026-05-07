@@ -3,7 +3,8 @@ use std::process::Command;
 
 /// Launch an application by path with optional arguments.
 /// Path is validated: no "..", no "~", must end in valid extension.
-/// Never invokes cmd.exe or powershell — direct process creation only.
+/// Shell script extensions (.bat/.cmd) are intentionally rejected so app
+/// launch cannot become indirect shell execution.
 pub fn launch_app(path: &str, args: Option<&[String]>) -> Result<(), ActionError> {
     // Validate path (defense in depth — also validated on mobile side)
     if path.contains("..") || path.contains('~') {
@@ -12,7 +13,7 @@ pub fn launch_app(path: &str, args: Option<&[String]>) -> Result<(), ActionError
         ));
     }
 
-    let valid_extensions = [".exe", ".lnk", ".bat", ".cmd", ".msc", ".cpl"];
+    let valid_extensions = [".exe", ".lnk", ".msc", ".cpl"];
     let lower_path = path.to_lowercase();
     if !valid_extensions.iter().any(|ext| lower_path.ends_with(ext)) {
         return Err(ActionError::InvalidPath(format!(

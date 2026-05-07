@@ -13,17 +13,21 @@ pub fn execute_system_action(action: &str) -> Result<(), ActionError> {
         "media_stop" => super::keybind::execute_keybind(&["media_stop".to_string()]),
         "screenshot" => super::keybind::execute_keybind(&["printscreen".to_string()]),
         "lock_screen" => super::keybind::execute_keybind(&["win".to_string(), "l".to_string()]),
+        "minimize_window" => super::keybind::execute_keybind(&["win".to_string(), "down".to_string()]),
+        "snap_left" => super::keybind::execute_keybind(&["win".to_string(), "left".to_string()]),
+        "snap_right" => super::keybind::execute_keybind(&["win".to_string(), "right".to_string()]),
+        "switch_window" => super::keybind::execute_keybind(&["alt".to_string(), "tab".to_string()]),
+        "close_window" => super::keybind::execute_keybind(&["alt".to_string(), "f4".to_string()]),
         "mic_mute" => {
-            // Windows doesn't have a universal mic mute VK; use the system mic mute shortcut
-            // Win+Alt+K is Microsoft Teams mute, but not universal
-            // For now, log and return OK — this needs a system-level implementation
-            log::warn!("mic_mute: no universal implementation yet");
-            Ok(())
+            Err(ActionError::IntegrationUnavailable(
+                "Mic mute is not supported by this companion build".to_string(),
+            ))
         }
         "brightness_up" | "brightness_down" | "sleep" => {
-            // These require specific Win32 API calls beyond SendInput
-            log::warn!("{}: not yet implemented", action);
-            Ok(())
+            Err(ActionError::IntegrationUnavailable(format!(
+                "{} is not supported by this companion build",
+                action
+            )))
         }
         _ => Err(ActionError::InvalidSystemAction(action.to_string())),
     }

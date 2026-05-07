@@ -28,7 +28,7 @@ pnpm tauri:build
 ```
 
 This produces:
-- `src-tauri/target/release/bundle/nsis/LuminaDeck Companion_0.1.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/nsis/LuminaDeck Companion_1.3.0_x64-setup.exe`
 
 ### Step 2: Convert to MSIX using MSIX Packaging Tool
 
@@ -38,7 +38,7 @@ This produces:
 4. Set:
    - Publisher: Your Partner Center publisher name
    - Package name: `LuminaDeck.Companion`
-   - Version: `0.1.0.0`
+   - Version: `1.3.0.0`
 5. Run through the installer wizard
 6. Review and create the MSIX package
 
@@ -49,7 +49,7 @@ This produces:
 3. Fill in the Store listing:
    - Description, screenshots, category (Utilities & tools)
    - Age rating: Everyone
-   - Privacy policy URL: https://luminadeck.app/privacy
+   - Privacy policy URL: https://luminaaio.com/luminadeck/privacy
 4. Submit for certification
 
 ## Alternative: Direct MSIX Build (Advanced)
@@ -73,7 +73,7 @@ MakeAppx.exe pack /d release-dir /p LuminaDeckCompanion.msix
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
   <Identity Name="LuminaDeck.Companion"
             Publisher="CN=PLACEHOLDER_PUBLISHER"
-            Version="0.1.0.0"
+            Version="1.3.0.0"
             ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>LuminaDeck Companion</DisplayName>
@@ -109,10 +109,10 @@ MakeAppx.exe pack /d release-dir /p LuminaDeckCompanion.msix
 **Short description**: Turn your iPhone into a customizable macro deck for your PC
 
 **Description**:
-LuminaDeck Companion receives commands from the LuminaDeck iPhone app and executes them on your Windows PC. Control keyboard shortcuts, launch apps, manage volume, and trigger system actions — all from your phone over secure local WiFi.
+LuminaDeck Companion receives commands from the LuminaDeck iPhone app and executes them on your Windows PC. Control keyboard shortcuts, launch apps, manage volume, and trigger system actions — all from your phone over authenticated local WiFi.
 
 Features:
-- Secure TLS 1.3 encrypted local connection
+- Authenticated QR-paired local connection
 - QR code pairing for instant setup
 - Supports keyboard shortcuts, app launching, and system actions
 - System tray integration
@@ -122,8 +122,8 @@ Requires the free LuminaDeck app on iPhone (available on the App Store).
 
 **Category**: Utilities & tools
 **Age rating**: Everyone
-**Privacy policy**: https://luminadeck.app/privacy
-**Website**: https://luminadeck.app
+**Privacy policy**: https://luminaaio.com/luminadeck/privacy
+**Website**: https://luminaaio.com/luminadeck
 
 ## Capabilities Required
 

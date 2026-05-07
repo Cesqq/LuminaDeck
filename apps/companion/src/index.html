@@ -359,7 +359,9 @@
     .setting-key { font-size: 12px; color: var(--text-secondary); }
     .setting-val { font-size: 12px; font-weight: 600; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="vendor/qrcode.js"></script>
+  <script src="vendor/Sortable.min.js"></script>
+  <link rel="stylesheet" href="studio/editor.css">
 </head>
 <body>
 
@@ -370,7 +372,7 @@
       <div>
         <div class="name">LuminaDeck</div>
       </div>
-      <span class="ver">v1.0</span>
+      <span class="ver" id="sidebar-version">v1.3.0</span>
     </div>
 
     <div class="nav-section">
@@ -384,6 +386,16 @@
       <div class="nav-item" data-page="devices">
         <span class="icon">☰</span> Devices
         <span class="badge" id="device-badge" style="display:none">0</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Profiles</div>
+      <div class="nav-item" data-page="editor">
+        <span class="icon">▦</span> Editor
+      </div>
+      <div class="nav-item" data-page="auto-profile">
+        <span class="icon">⇄</span> Auto-Switch
       </div>
     </div>
 
@@ -443,7 +455,7 @@
           </div>
           <div class="info-row">
             <span class="info-label">Local IP</span>
-            <span><span class="info-value" id="local-ip">—</span><button class="btn-copy" onclick="copyText('local-ip')">Copy</button></span>
+            <span><span class="info-value" id="local-ip">—</span><button class="btn-copy" data-copy-target="local-ip">Copy</button></span>
           </div>
           <div class="info-row">
             <span class="info-label">Ports</span>
@@ -555,6 +567,109 @@
         </div>
       </div>
 
+      <!-- ── Editor ───────────────── -->
+      <div class="page" id="page-editor">
+        <!-- Gate: editor is locked until a phone is paired AND connected. -->
+        <!-- Swapped in by studio/editor.js based on connection + proStatus. -->
+        <div class="editor-gate" id="editor-gate" style="display:none">
+          <div class="editor-gate-card">
+            <div class="editor-gate-icon">📱</div>
+            <h2 class="editor-gate-title">Connect your phone to start editing</h2>
+            <p class="editor-gate-body">
+              Lumina Deck Studio tailors the editor to the phone you pair with it.
+              Free vs. Pro limits come from the mobile app, so we wait until a device
+              connects before letting you arrange tiles.
+            </p>
+            <ol class="editor-gate-steps">
+              <li>Open the Lumina Deck app on your phone.</li>
+              <li>Tap <strong>Connect</strong> and scan the QR code on the Pair Device page.</li>
+              <li>Once connected, this editor unlocks automatically.</li>
+            </ol>
+            <a class="btn-secondary btn-xs" href="#" data-jump-to-page="pair">Go to Pair Device →</a>
+          </div>
+        </div>
+        <div class="editor-layout" id="editor-layout" style="display:none">
+
+          <!-- Left: Tile palette -->
+          <aside class="editor-palette">
+            <div class="palette-header">
+              <span>Tiles</span>
+              <input type="search" class="palette-search" id="palette-search" placeholder="Search…" />
+            </div>
+            <div class="palette-categories" id="palette-categories"></div>
+            <div class="palette-list" id="palette-list">
+              <div class="empty">Loading…</div>
+            </div>
+          </aside>
+
+          <!-- Center: Canvas -->
+          <section class="editor-canvas">
+            <div class="editor-toolbar">
+              <div class="page-tabs" id="editor-page-tabs"></div>
+              <button class="btn-secondary btn-xs" id="btn-add-page" title="Add page">+ Page</button>
+              <div class="toolbar-spacer"></div>
+              <select class="layout-picker" id="layout-picker" title="Grid layout">
+                <option value="3x4">3×4</option>
+                <option value="2x4">2×4</option>
+                <option value="4x5">4×5</option>
+                <option value="5x3">5×3</option>
+                <option value="8x4">8×4</option>
+                <option value="8x8">8×8</option>
+              </select>
+              <button class="btn-secondary btn-xs" id="btn-import-sd" title="Import a hardware-deck profile (.streamDeckProfile / similar)">↧ SD</button>
+              <button class="btn-secondary btn-xs" id="btn-export-profile" title="Export this profile to JSON">Export…</button>
+              <button class="btn-secondary btn-xs" id="btn-import-profile" title="Import a LuminaDeck profile JSON">Import…</button>
+              <button class="btn-secondary btn-xs" id="btn-reload-profile" title="Reload from disk">Reload</button>
+              <button class="btn-primary btn-xs" id="btn-push-to-phone">Push to Phone</button>
+            </div>
+            <div class="editor-canvas-inner">
+              <div class="editor-grid" id="editor-grid"></div>
+              <div class="editor-status" id="editor-status">Ready</div>
+            </div>
+          </section>
+
+          <!-- Right: Inspector -->
+          <aside class="editor-inspector">
+            <div class="inspector-empty" id="inspector-empty">
+              <div class="empty-illustration">▦</div>
+              <div>Select a tile to edit its action, label, and appearance.</div>
+            </div>
+            <div class="inspector-form" id="inspector-form" hidden></div>
+          </aside>
+
+        </div>
+      </div>
+
+      <!-- ── Auto-Switch ──────────── -->
+      <div class="page" id="page-auto-profile">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Active Window</span>
+            <button class="btn-xs btn-secondary" id="ap-refresh-window">Refresh</button>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Currently foreground</span>
+            <span class="info-value" id="ap-active-window" style="font-family:'SF Mono',Consolas,monospace;font-size:11px">—</span>
+          </div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:6px">
+            Updated automatically every 2 s. Use the "Capture" button below to bind the current window to a profile.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Rules</span>
+            <button class="btn-xs btn-primary" id="ap-add-rule">+ Add rule</button>
+          </div>
+          <div id="ap-rules-list">
+            <div class="empty">No rules yet — add one to bind a process to a profile.</div>
+          </div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:8px">
+            When the matched process becomes the foreground window, the companion broadcasts a <code>profile_switch</code> to every connected device. Rules persist across restarts.
+          </div>
+        </div>
+      </div>
+
       <!-- ── Settings ─────────────── -->
       <div class="page" id="page-settings">
         <div class="card">
@@ -568,191 +683,17 @@
         <div class="card">
           <div class="card-header"><span class="card-title">About</span></div>
           <div class="setting-row"><span class="setting-key">Application</span><span class="setting-val">LuminaDeck Studio</span></div>
-          <div class="setting-row"><span class="setting-key">Version</span><span class="setting-val">1.0.0</span></div>
-          <div class="setting-row"><span class="setting-key">Protocol</span><span class="setting-val">1.1.0</span></div>
+          <div class="setting-row"><span class="setting-key">Version</span><span class="setting-val">1.1.0</span></div>
+          <div class="setting-row"><span class="setting-key">Protocol</span><span class="setting-val">1.2.0</span></div>
           <div class="setting-row"><span class="setting-key">Engine</span><span class="setting-val">Tauri v2 + Rust</span></div>
+          <div class="setting-row"><span class="setting-key">Privacy</span><span class="setting-val"><a href="https://luminaaio.com/luminadeck/privacy" target="_blank" style="color:var(--accent-bright)">luminaaio.com/luminadeck/privacy</a></span></div>
+          <div class="setting-row"><span class="setting-key">Homepage</span><span class="setting-val"><a href="https://luminaaio.com/luminadeck" target="_blank" style="color:var(--accent-bright)">luminaaio.com/luminadeck</a></span></div>
         </div>
       </div>
 
     </div>
   </div>
 
-  <script type="module">
-    const { invoke } = window.__TAURI__.core;
-    const { listen } = window.__TAURI__.event;
-
-    // ── Navigation ──────────────────
-    const navItems = document.querySelectorAll('.nav-item[data-page]');
-    const pages = document.querySelectorAll('.page');
-    const topTitle = document.getElementById('topbar-title');
-    const topSub = document.getElementById('topbar-sub');
-
-    const pageTitles = {
-      dashboard: 'Dashboard',
-      pair: 'Pair Device',
-      devices: 'Devices',
-      plugins: 'Plugins',
-      settings: 'Settings',
-    };
-
-    navItems.forEach(item => {
-      item.addEventListener('click', () => {
-        const page = item.dataset.page;
-        navItems.forEach(n => n.classList.remove('active'));
-        pages.forEach(p => p.classList.remove('active'));
-        item.classList.add('active');
-        document.getElementById('page-' + page).classList.add('active');
-        topTitle.textContent = pageTitles[page] || page;
-      });
-    });
-
-    // ── Copy ────────────────────────
-    window.copyText = function(id) {
-      const text = document.getElementById(id)?.textContent;
-      if (text && text !== '—') navigator.clipboard.writeText(text);
-    };
-
-    // ── Server info ─────────────────
-    let totalActions = 0;
-
-    async function refreshInfo() {
-      try {
-        const info = await invoke('get_server_info');
-        document.getElementById('local-ip').textContent = info.ip;
-        document.getElementById('manual-ip').textContent = info.ip;
-        document.getElementById('sidebar-ip').textContent = `${info.ip}:9877`;
-        document.getElementById('stat-connected').textContent = String(info.connected_devices);
-        document.getElementById('stat-paired').textContent = String(info.paired_count);
-        document.getElementById('cert-fp').textContent = info.cert_fingerprint || '—';
-
-        const dot = document.getElementById('sidebar-dot');
-        const stxt = document.getElementById('sidebar-status-text');
-        if (info.status === 'running') {
-          dot.className = 'status-dot';
-          stxt.textContent = info.connected_devices > 0
-            ? `${info.connected_devices} connected`
-            : 'Waiting...';
-        }
-      } catch (e) { console.error(e); }
-    }
-
-    // ── QR code ─────────────────────
-    async function generateQR() {
-      try {
-        const data = await invoke('get_qr_pairing_data');
-        const container = document.getElementById('qr-container');
-        container.innerHTML = '';
-        const qr = qrcode(0, 'M');
-        qr.addData(data.json);
-        qr.make();
-        const size = 180;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        canvas.style.borderRadius = '12px';
-        const ctx = canvas.getContext('2d');
-        const mc = qr.getModuleCount();
-        const cs = size / mc;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, size, size);
-        ctx.fillStyle = '#000000';
-        for (let r = 0; r < mc; r++)
-          for (let c = 0; c < mc; c++)
-            if (qr.isDark(r, c))
-              ctx.fillRect(c * cs, r * cs, cs, cs);
-        container.appendChild(canvas);
-      } catch (e) {
-        document.getElementById('qr-container').innerHTML = '<div class="empty">QR failed</div>';
-      }
-    }
-
-    // ── Devices ─────────────────────
-    async function refreshDevices() {
-      try {
-        const devices = await invoke('get_paired_devices');
-        const container = document.getElementById('device-list');
-        if (devices.length === 0) {
-          container.innerHTML = '<div class="empty">No paired devices</div>';
-          return;
-        }
-        container.innerHTML = devices.map(d => `
-          <div class="device-card">
-            <div class="device-avatar">📱</div>
-            <div class="device-details">
-              <div class="device-name">${esc(d.name)}</div>
-              <div class="device-meta">Paired ${d.paired_at}</div>
-            </div>
-            <button class="btn-remove" onclick="removeDevice('${esc(d.id)}')">Remove</button>
-          </div>
-        `).join('');
-      } catch (e) { console.error(e); }
-    }
-
-    window.removeDevice = async function(id) {
-      try { await invoke('remove_paired_device', { deviceId: id }); refreshDevices(); } catch (e) { console.error(e); }
-    };
-
-    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-    // ── Connected devices ───────────
-    const connectedDevices = new Map();
-
-    function renderConnected() {
-      const container = document.getElementById('connected-devices-list');
-      const badge = document.getElementById('device-badge');
-      if (connectedDevices.size === 0) {
-        container.innerHTML = '<div class="empty">No devices connected</div>';
-        badge.style.display = 'none';
-        return;
-      }
-      badge.textContent = String(connectedDevices.size);
-      badge.style.display = '';
-      container.innerHTML = '';
-      for (const [peer, info] of connectedDevices) {
-        const card = document.createElement('div');
-        card.className = 'device-card';
-        card.innerHTML = `
-          <div class="device-avatar" style="border-color:var(--green)">📱</div>
-          <div class="device-details">
-            <div class="device-name">${esc(info.name)}</div>
-            <div class="device-meta">${esc(peer)} · Protocol v${esc(info.protocol)}</div>
-          </div>
-          <span class="plugin-status badge-green">Live</span>
-        `;
-        container.appendChild(card);
-      }
-    }
-
-    // ── Events ──────────────────────
-    listen('device-identified', (e) => {
-      const { device_name, device_id, peer, protocol_version } = e.payload;
-      connectedDevices.set(peer, { name: device_name, id: device_id, protocol: protocol_version });
-      renderConnected();
-    });
-
-    listen('connection-change', (e) => {
-      const { event_type, peer, active_count } = e.payload;
-      if (event_type === 'disconnected') { connectedDevices.delete(peer); renderConnected(); }
-      document.getElementById('stat-connected').textContent = String(active_count);
-      const stxt = document.getElementById('sidebar-status-text');
-      stxt.textContent = active_count > 0 ? `${active_count} connected` : 'Waiting...';
-      refreshInfo();
-    });
-
-    listen('active-window-change', (e) => {
-      const { process_name } = e.payload;
-      const el1 = document.getElementById('active-window');
-      const el2 = document.getElementById('active-window-plugins');
-      if (el1) el1.textContent = process_name || '—';
-      if (el2) el2.textContent = process_name || '—';
-    });
-
-    // ── Init ────────────────────────
-    refreshInfo();
-    generateQR();
-    refreshDevices();
-    setInterval(refreshInfo, 10000);
-    setInterval(refreshDevices, 30000);
-  </script>
+  <script type="module" src="studio/main.js"></script>
 </body>
 </html>

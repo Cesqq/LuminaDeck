@@ -1,29 +1,24 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/v2/crates/tauri-config-schema/schema.json",
-  "productName": "LuminaDeck Studio",
-  "version": "1.0.0",
+  "productName": "Lumina Deck Studio",
+  "version": "1.3.0",
   "identifier": "com.luminadeck.companion",
   "build": {
-    "frontendDist": "../src",
-    "devUrl": "http://localhost:1420"
+    "frontendDist": "../src"
   },
   "app": {
     "withGlobalTauri": true,
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": false
-    },
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'; img-src 'self' data:; font-src 'self'"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'"
     },
     "windows": [
       {
         "label": "main",
-        "title": "LuminaDeck Studio",
-        "width": 480,
-        "height": 640,
-        "minWidth": 400,
-        "minHeight": 500,
+        "title": "Lumina Deck Studio",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 720,
+        "minHeight": 560,
         "resizable": true,
         "visible": false,
         "center": true,
@@ -34,6 +29,12 @@
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi"],
+    "shortDescription": "Turn your phone into a customizable macro controller for your Windows PC over local Wi-Fi.",
+    "longDescription": "LuminaDeck Studio pairs with the LuminaDeck mobile app to deliver a zero-latency, local-only macro deck: drag launch-ready tiles into your phone's grid, bind keyboard/media/Discord shortcuts, or auto-switch profiles when specific apps come to the foreground. No cloud relay; QR-paired local control.",
+    "copyright": "(c) 2026 LuminaDeck. All rights reserved.",
+    "category": "Productivity",
+    "homepage": "https://luminaaio.com/luminadeck",
+    "publisher": "LuminaDeck",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

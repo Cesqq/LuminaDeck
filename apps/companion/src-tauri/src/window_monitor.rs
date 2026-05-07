@@ -3,6 +3,9 @@ use tauri::Emitter;
 use serde::Serialize;
 use std::sync::Arc;
 use parking_lot::Mutex;
+use tokio::sync::broadcast;
+
+use crate::ws_bus::BroadcastMessage;
 
 #[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
@@ -36,7 +39,14 @@ impl WindowMonitor {
     }
 
     /// Spawn a background task that polls the foreground window.
-    pub fn start(&self, app_handle: AppHandle) {
+    /// When `broadcast_tx` is provided, also relays the change to all
+    /// connected WebSocket clients as an `active_window` message so mobile
+    /// clients can match auto-profile rules.
+    pub fn start(
+        &self,
+        app_handle: AppHandle,
+        broadcast_tx: Option<broadcast::Sender<BroadcastMessage>>,
+    ) {
         let last = self.last_process.clone();
 
         tauri::async_runtime::spawn(async move {
@@ -64,6 +74,15 @@ impl WindowMonitor {
                 log::debug!("Active window changed: {} — {}", process_name, window_title);
 
                 let _ = app_handle.emit("active-window-change", &msg);
+
+                if let Some(tx) = &broadcast_tx {
+                    let json = serde_json::json!({
+                        "type": "active_window",
+                        "processName": process_name,
+                        "windowTitle": window_title,
+                    });
+                    let _ = tx.send(BroadcastMessage::active_window(json.to_string()));
+                }
             }
         });
     }

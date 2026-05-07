@@ -51,7 +51,14 @@ fn vk_map() -> &'static HashMap<&'static str, u16> {
         ("numpad4", 0x64), ("numpad5", 0x65), ("numpad6", 0x66), ("numpad7", 0x67),
         ("numpad8", 0x68), ("numpad9", 0x69),
         ("numpad_multiply", 0x6A), ("numpad_add", 0x6B), ("numpad_subtract", 0x6D),
-        ("numpad_decimal", 0x6E), ("numpad_divide", 0x6F),
+        ("numpad_decimal", 0x6E), ("numpad_divide", 0x6F), ("numpad_enter", 0x0D),
+        // Browser keys
+        ("browser_back", 0xA6), ("browser_forward", 0xA7), ("browser_refresh", 0xA8),
+        ("browser_stop", 0xA9), ("browser_search", 0xAA), ("browser_favorites", 0xAB),
+        ("browser_home", 0xAC),
+        // App launch keys
+        ("launch_mail", 0xB4), ("launch_media", 0xB5),
+        ("launch_app1", 0xB6), ("launch_app2", 0xB7),
     ];
 
         for &(name, vk) in entries {
@@ -65,8 +72,11 @@ fn vk_map() -> &'static HashMap<&'static str, u16> {
 const EXTENDED_KEYS: &[&str] = &[
     "up", "down", "left", "right", "home", "end", "pageup", "pagedown",
     "insert", "delete", "printscreen", "rctrl", "ralt", "rwin",
-    "numpad_divide", "media_play_pause", "media_next", "media_prev",
+    "numpad_divide", "numpad_enter", "media_play_pause", "media_next", "media_prev",
     "media_stop", "volume_up", "volume_down", "volume_mute",
+    "browser_back", "browser_forward", "browser_refresh", "browser_stop",
+    "browser_search", "browser_favorites", "browser_home",
+    "launch_mail", "launch_media", "launch_app1", "launch_app2",
 ];
 
 /// Modifier key names for ordering (pressed first, released last)
