@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import type { ConnectionStatus, ProfileConfig } from '@luminadeck/shared';
 import { TELEMETRY_EVENTS } from '@luminadeck/shared';
@@ -134,10 +135,28 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
     return unsubscribe;
   }, [upsertProfile, setActiveProfile]);
 
-  // Auto-reconnect to last known PC on app launch
+  // Track the current status in a ref so the AppState handler below can
+  // read it without re-subscribing on every status change.
+  const statusRef = useRef<ConnectionStatus>(status);
   useEffect(() => {
-    SecureStore.getItemAsync(LAST_CONNECTION_KEY).then((raw) => {
-      if (raw) {
+    statusRef.current = status;
+  }, [status]);
+
+  // Auto-reconnect to last known PC. Triggers in two cases:
+  //   1. Cold launch (initial useEffect run)
+  //   2. App returns to foreground while not currently connected
+  //
+  // iOS suspends WebSockets when the app is backgrounded; the WS client's
+  // 5-attempt internal reconnect exhausts itself within ~30s while the
+  // JS thread is suspended, leaving `shouldReconnect=false` and status
+  // 'error'. Without this AppState handler, the user sees the
+  // "needs pairing" UI on every foreground transition. connect() resets
+  // shouldReconnect + reconnectAttempt internally, so re-calling it
+  // recovers cleanly from the give-up state.
+  useEffect(() => {
+    const reconnectFromSaved = () => {
+      SecureStore.getItemAsync(LAST_CONNECTION_KEY).then((raw) => {
+        if (!raw) return;
         try {
           const last: LastConnection = JSON.parse(raw);
           if (last.ip && last.port) {
@@ -147,8 +166,18 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
         } catch {
           // Corrupted — ignore
         }
+      });
+    };
+
+    reconnectFromSaved();
+
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === 'active' && statusRef.current !== 'connected') {
+        reconnectFromSaved();
       }
-    });
+    };
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
   }, []);
 
   const connect = useCallback((ip: string, port: number, pairingSecret?: string) => {

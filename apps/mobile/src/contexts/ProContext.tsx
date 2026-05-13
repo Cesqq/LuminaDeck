@@ -11,8 +11,13 @@ import {
   checkProEntitlement,
   getProPrice,
 } from '../lib/iap';
+import { redeemCompCode, describeRedeemFailure, proStatusFromRedeem } from '../lib/compCodes';
 
 type Limits = typeof FREE_LIMITS | typeof PRO_LIMITS;
+
+type RedeemOutcome =
+  | { ok: true; tier: 'lifetime' | 'pro_1y' | 'pro_30d'; idempotent: boolean }
+  | { ok: false; message: string };
 
 interface ProContextValue {
   isPro: boolean;
@@ -21,8 +26,10 @@ interface ProContextValue {
   priceString: string;
   isPurchasing: boolean;
   isRestoring: boolean;
+  isRedeeming: boolean;
   purchase: () => Promise<void>;
   restore: () => Promise<void>;
+  redeem: (code: string) => Promise<RedeemOutcome>;
   setPro: (status: ProStatus) => void;
 }
 
@@ -42,8 +49,10 @@ const ProContext = createContext<ProContextValue>({
   priceString: '$9.99',
   isPurchasing: false,
   isRestoring: false,
+  isRedeeming: false,
   purchase: async () => {},
   restore: async () => {},
+  redeem: async () => ({ ok: false, message: 'Not initialized' }),
   setPro: () => {},
 });
 
@@ -52,6 +61,7 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
   const [priceString, setPriceString] = useState('$9.99');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isRedeeming, setIsRedeeming] = useState(false);
 
   useEffect(() => {
     // Load cached Pro status
@@ -129,6 +139,21 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setPro]);
 
+  const redeem = useCallback(async (code: string): Promise<RedeemOutcome> => {
+    setIsRedeeming(true);
+    try {
+      const result = await redeemCompCode({ code });
+      if (result.ok) {
+        // Flip ProContext state — saveProStatus already ran inside redeemCompCode
+        setProStatus(proStatusFromRedeem(result));
+        return { ok: true, tier: result.tier, idempotent: result.idempotent === true };
+      }
+      return { ok: false, message: describeRedeemFailure(result.reason) };
+    } finally {
+      setIsRedeeming(false);
+    }
+  }, []);
+
   const limits = proStatus.isPro ? PRO_LIMITS : FREE_LIMITS;
 
   return (
@@ -140,8 +165,10 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
         priceString,
         isPurchasing,
         isRestoring,
+        isRedeeming,
         purchase,
         restore,
+        redeem,
         setPro,
       }}
     >

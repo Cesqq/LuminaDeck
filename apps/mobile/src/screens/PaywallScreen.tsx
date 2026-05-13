@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { usePro } from '../contexts/ProContext';
 import { TELEMETRY_EVENTS } from '@luminadeck/shared';
 import { track } from '../lib/telemetry';
+import { RedeemCodeModal } from '../components/RedeemCodeModal';
 
 interface PaywallScreenProps {
   visible: boolean;
@@ -46,6 +47,7 @@ const PRO_FEATURES = [
 export function PaywallScreen({ visible, onClose }: PaywallScreenProps) {
   const { colors } = useTheme();
   const { purchase, restore, isPurchasing, isRestoring, priceString } = usePro();
+  const [redeemVisible, setRedeemVisible] = useState(false);
 
   // Telemetry: paywall_view fires on each modal open (not on re-render).
   // Source is 'settings' for now — when the paywall is launched from other
@@ -193,10 +195,33 @@ export function PaywallScreen({ visible, onClose }: PaywallScreenProps) {
             </Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            onPress={() => setRedeemVisible(true)}
+            disabled={isLoading}
+            style={styles.redeemLink}
+            accessibilityRole="button"
+            accessibilityLabel="Redeem a comp or reviewer code"
+          >
+            <Text style={[styles.redeemLinkText, { color: colors.textSecondary }]}>
+              Have a code?
+            </Text>
+          </TouchableOpacity>
+
           <Text style={[styles.legalText, { color: colors.textSecondary }]}>
             One-time in-app purchase. No subscription or auto-renewal.
           </Text>
         </View>
+
+        <RedeemCodeModal
+          visible={redeemVisible}
+          onClose={() => setRedeemVisible(false)}
+          onSuccess={() => {
+            // Pro state already flipped inside ProContext.redeem; close the
+            // paywall after the redeem modal closes so the user lands back
+            // in the app already entitled.
+            setTimeout(onClose, 150);
+          }}
+        />
       </View>
     </Modal>
   );
@@ -344,6 +369,15 @@ const styles = StyleSheet.create({
   restoreLinkText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  redeemLink: {
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  redeemLinkText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
   legalText: {
     fontSize: 10,

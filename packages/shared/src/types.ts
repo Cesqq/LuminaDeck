@@ -294,7 +294,7 @@ export interface ProStatus {
   plan: ProPlan;
   purchaseDate?: string;
   expiresAt?: string;
-  source: 'apple_iap' | 'google_play' | 'stripe' | 'none';
+  source: 'apple_iap' | 'google_play' | 'stripe' | 'comp_code' | 'none';
 }
 
 // --- Limits ---

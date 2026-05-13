@@ -25,7 +25,7 @@ import { initPredictor } from './src/lib/predictor';
 import { TELEMETRY_EVENTS } from '@luminadeck/shared';
 
 const ONBOARDING_KEY = '@luminadeck/onboarding_complete';
-const APP_VERSION = '1.3.4';
+const APP_VERSION = '1.4.0';
 
 type TabId = 'home' | 'connect' | 'auto' | 'plugins' | 'pages' | 'keyboard' | 'settings';
 
