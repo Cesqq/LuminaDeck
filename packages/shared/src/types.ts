@@ -3,6 +3,8 @@
  * Protocol v1.1 — extended action types, subscription pricing, iPad layouts.
  */
 
+import { FEATURE_GATES } from './feature-gates';
+
 // --- Action Types ---
 
 export type ActionType =
@@ -305,15 +307,17 @@ export const FREE_LIMITS = {
   maxPairedDevices: 1,
   maxProfiles: 1,
   themes: ['obsidian'] as string[],
-  customImages: false,
-  gifIcons: false,
-  multiAction: false,
-  macros: false,
-  obsIntegration: false,
-  discordIntegration: false,
-  profileExport: false,
-  folderSupport: false,
-  autoProfileSwitch: false,
+  textInput: FEATURE_GATES.text_input.free,
+  trackpad: FEATURE_GATES.trackpad.free,
+  customImages: FEATURE_GATES.custom_images.free,
+  gifIcons: FEATURE_GATES.gif_icons.free,
+  multiAction: FEATURE_GATES.multi_action.free,
+  macros: FEATURE_GATES.macro.free,
+  obsIntegration: FEATURE_GATES.obs.free,
+  discordIntegration: FEATURE_GATES.discord.free,
+  profileExport: FEATURE_GATES.profile_export.free,
+  folderSupport: FEATURE_GATES.folder.free,
+  autoProfileSwitch: FEATURE_GATES.auto_profile.free,
 } as const;
 
 export const PRO_LIMITS = {
@@ -322,13 +326,15 @@ export const PRO_LIMITS = {
   maxPairedDevices: 5,
   maxProfiles: 20,
   themes: 'all' as const,
-  customImages: true,
-  gifIcons: true,
-  multiAction: true,
-  macros: true,
-  obsIntegration: false,
-  discordIntegration: true,
-  profileExport: true,
-  folderSupport: true,
-  autoProfileSwitch: true,
+  textInput: FEATURE_GATES.text_input.pro,
+  trackpad: FEATURE_GATES.trackpad.pro,
+  customImages: FEATURE_GATES.custom_images.pro,
+  gifIcons: FEATURE_GATES.gif_icons.pro,
+  multiAction: FEATURE_GATES.multi_action.pro,
+  macros: FEATURE_GATES.macro.pro,
+  obsIntegration: FEATURE_GATES.obs.pro,
+  discordIntegration: FEATURE_GATES.discord.pro,
+  profileExport: FEATURE_GATES.profile_export.pro,
+  folderSupport: FEATURE_GATES.folder.pro,
+  autoProfileSwitch: FEATURE_GATES.auto_profile.pro,
 } as const;
