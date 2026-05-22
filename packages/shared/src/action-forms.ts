@@ -11,6 +11,7 @@
  */
 
 import type { ActionType } from './types';
+import { FEATURE_GATES } from './feature-gates';
 
 export type FieldType =
   | 'text'
@@ -84,7 +85,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Keyboard Shortcut',
     description: 'Send a key combo (Ctrl+C, Alt+Tab…) to your PC.',
     category: 'input',
-    free: true,
+    free: FEATURE_GATES.keybind.free,
     fields: [
       {
         id: 'keys',
@@ -103,7 +104,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Launch App',
     description: 'Start a program or open a shortcut on your PC.',
     category: 'app',
-    free: true,
+    free: FEATURE_GATES.app_launch.free,
     fields: [
       {
         id: 'path',
@@ -129,7 +130,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'System Action',
     description: 'Volume, media, screenshot, lock screen, window snap…',
     category: 'system',
-    free: true,
+    free: FEATURE_GATES.system_action.free,
     fields: [
       {
         id: 'action',
@@ -165,7 +166,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Multi-Action',
     description: 'Run a sequence of actions with optional delays.',
     category: 'flow',
-    free: false,
+    free: FEATURE_GATES.multi_action.free,
     fields: [
       {
         id: 'actions',
@@ -183,7 +184,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Type Text',
     description: 'Paste or type a snippet into the focused window.',
     category: 'input',
-    free: true,
+    free: FEATURE_GATES.text_input.free,
     fields: [
       {
         id: 'text',
@@ -200,7 +201,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Folder',
     description: 'Group buttons into a nested grid.',
     category: 'flow',
-    free: false,
+    free: FEATURE_GATES.folder.free,
     fields: [
       { id: 'folderName', label: 'Folder name', type: 'text', required: true, min: 1, max: 32 },
       {
@@ -226,7 +227,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Timer',
     description: 'Countdown or count-up displayed on the tile face.',
     category: 'time',
-    free: false,
+    free: FEATURE_GATES.timer.free,
     fields: [
       { id: 'durationMs', label: 'Duration (ms)', type: 'number', required: true, min: 1000, max: 86400000 },
       { id: 'countUp', label: 'Count up', type: 'boolean' },
@@ -239,7 +240,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Counter',
     description: 'Tap to increment; shows the running total on the tile.',
     category: 'time',
-    free: false,
+    free: FEATURE_GATES.counter.free,
     fields: [
       { id: 'initialValue', label: 'Initial value', type: 'number', required: true },
       { id: 'step', label: 'Step', type: 'number', required: true, min: -1000, max: 1000 },
@@ -252,7 +253,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'OBS Studio',
     description: 'Scene switch, record / stream toggle, source visibility.',
     category: 'integration',
-    free: false,
+    free: FEATURE_GATES.obs.free,
     fields: [
       {
         id: 'command',
@@ -278,7 +279,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Discord',
     description: 'Mute / deafen / push-to-talk via Discord hotkeys.',
     category: 'integration',
-    free: false,
+    free: FEATURE_GATES.discord.free,
     fields: [
       {
         id: 'command',
@@ -299,7 +300,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Macro',
     description: 'Run a saved macro from the Macros tab.',
     category: 'flow',
-    free: false,
+    free: FEATURE_GATES.macro.free,
     fields: [
       { id: 'macroId', label: 'Macro', type: 'macro-picker', required: true },
     ],
@@ -310,7 +311,7 @@ export const ACTION_FORM_SPECS: Record<ActionType, ActionFormSpec> = {
     label: 'Trackpad',
     description: 'Open a full-screen trackpad to drive the PC mouse.',
     category: 'input',
-    free: true,
+    free: FEATURE_GATES.trackpad.free,
     fields: [
       {
         id: 'sensitivity',

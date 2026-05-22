@@ -40,8 +40,9 @@ const MIN_CLIENT_PROTOCOL: &str = ">=1.1.0, <2.0.0";
 const MIN_FEATURE_PROFILE_UPDATE: &str = ">=1.2.0, <2.0.0";
 
 /// Capabilities advertised by this companion. Sent in `hello_ack` and
-/// in response to `request_capabilities`. Keep in sync with
-/// `CompanionCapability` in packages/shared/src/protocol.ts.
+/// in response to `request_capabilities`. Mirrors `COMPANION_CAPABILITIES`
+/// derived from `FEATURE_GATES` in packages/shared/src/feature-gates.ts;
+/// packages/shared/src/feature-gates.test.ts enforces the cross-language sync.
 const ADVERTISED_CAPABILITIES: &[&str] = &[
     "keybind",
     "app_launch",

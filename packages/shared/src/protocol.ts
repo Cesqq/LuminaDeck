@@ -6,6 +6,7 @@
 
 import semver from 'semver';
 import type { Action, ProfileConfig, ProfileSwitchRule, ProStatus } from './types';
+import type { CompanionCapabilityFromFeatureGates } from './feature-gates';
 
 // --- Handshake (v1.1+) ---
 
@@ -41,18 +42,7 @@ export interface HelloAckMessage {
   } | null;
 }
 
-export type CompanionCapability =
-  | 'keybind'
-  | 'app_launch'
-  | 'system_action'
-  | 'multi_action'
-  | 'text_input'
-  | 'obs'
-  | 'discord'
-  | 'macro'
-  | 'window_monitor'
-  | 'auto_profile'
-  | 'trackpad';
+export type CompanionCapability = CompanionCapabilityFromFeatureGates;
 
 // --- Client → Companion Messages ---
 
