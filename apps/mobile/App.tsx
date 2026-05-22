@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import * as Sentry from '@sentry/react-native';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,6 +27,22 @@ import { TELEMETRY_EVENTS } from '@luminadeck/shared';
 
 const ONBOARDING_KEY = '@luminadeck/onboarding_complete';
 const APP_VERSION = '1.4.0';
+
+// Sentry crash/error reporting. The DSN is a public client key, so an inline
+// fallback is safe; EXPO_PUBLIC_SENTRY_DSN can override it per build/env.
+// NOTE: source-map upload is intentionally NOT configured here — the
+// build-scoped auth token is being rotated. Wire it via the
+// @sentry/react-native Metro/EAS plugin (and a SENTRY_AUTH_TOKEN env var,
+// never committed) once the new token is issued.
+const SENTRY_DSN =
+  process.env.EXPO_PUBLIC_SENTRY_DSN ??
+  'https://e9cbe8afcf5f48672ee954986c070423@o4511429577146368.ingest.us.sentry.io/4511431806746624';
+
+Sentry.init({
+  dsn: SENTRY_DSN,
+  // Capture a sample of performance traces. Tune down if volume is high.
+  tracesSampleRate: 1.0,
+});
 
 type TabId = 'home' | 'connect' | 'auto' | 'plugins' | 'pages' | 'keyboard' | 'settings';
 
@@ -329,7 +346,7 @@ function isLightColor(hex: string): boolean {
   return luminance > 0.5;
 }
 
-export default function App() {
+function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
@@ -346,6 +363,10 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap enables automatic performance tracing of the root component
+// tree and ensures the error boundary is in place around the whole app.
+export default Sentry.wrap(App);
 
 const styles = StyleSheet.create({
   root: {
