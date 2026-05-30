@@ -1,0 +1,151 @@
+{
+  "app": "LuminaDeck",
+  "app_slug": "lumina-deck",
+  "app_path": "C:/Dev/LuminaDeck",
+  "comfort_gate": "orientation",
+  "platform": "ios-android-windows",
+  "stage": "Pre-launch, submission-ready — iOS v1.4.0 build 13 RevenueCat-wired, MS Store MSIX built, Android blocked on keystore",
+  "tests_required": true,
+  "tipsy_profile_path": "C:/Users/czr05/Tipsy/profiles/lumina-deck.md",
+  "tipsy_profile_present": true,
+  "current_phase": "launch-prep (effectively v1-complete; no Wright phased plan)",
+  "wright_plan_current": null,
+  "wright_v1_path": null,
+  "wright_v2_path": null,
+  "wright_v3_path": null,
+  "wright_v3_present": false,
+  "wright_plan_status": "NO Wright v1/v2/v3 dir exists for lumina-deck (predates Wright). Roadmap proxy = docs/LUMINADECK-LAUNCH-PLAN.md (5-of-5 ratified plan). App is BUILT (iOS build 13 RevenueCat-wired, MSIX built) and submission-ready — effectively v1-complete, awaiting only screenshots + Android keystore. Treat as launch-prep -> maintenance, NOT a phased build. AMBIGUITY FLAGGED 2026-05-20: user should confirm whether to (a) treat as maintenance against LAUNCH-PLAN.md [recommended], or (b) commission a Wright v1/v2/v3 to phase future feature work.",
+  "phase_ambiguity_needs_user_call": true,
+  "roadmap_proxy": "C:/Dev/LuminaDeck/docs/LUMINADECK-LAUNCH-PLAN.md",
+  "agents_md_in_repo": false,
+  "agents_md_staged": true,
+  "agents_md_staged_path": "C:/Dev/LuminaDeck/.claude/staging/AGENTS.md",
+  "bundle_ids": {
+    "ios": "com.luminadeck.app",
+    "android": "com.luminadeck.app",
+    "tauri_companion": "com.luminadeck.companion",
+    "msix_package_name": "CZRE.LuminaDeck",
+    "msix_publisher_cn": "CN=24DA9F28-A632-4B32-AB31-FAD4EC93A0A2",
+    "ios_app_group": "group.com.luminadeck.shared",
+    "apple_team_id": "7A2K2PDKW4",
+    "asc_app_id": "6762442797",
+    "asc_api_key_id": "5G4BLJ82KH",
+    "eas_project_id": "5487c725-c788-4978-a67e-1da84e7c172e"
+  },
+  "versions": {
+    "ios_version_name": "1.4.0",
+    "ios_build_number": "13",
+    "android_version_name": "1.4.0",
+    "android_version_code": 13,
+    "tauri_companion_version": "1.3.0",
+    "msix_version": "1.3.0.0"
+  },
+  "store_status": {
+    "ios": "testflight-pending",
+    "ios_notes": "Build 13 RevenueCat-wired; needs 6.9-inch iPhone + 13-inch iPad screenshots before TestFlight submission",
+    "android": "keystore-blocked",
+    "android_notes": "Release signingConfig references LUMINADECK_UPLOAD_STORE_FILE/PASSWORD/KEY_ALIAS/KEY_PASSWORD Gradle props but no upload keystore generated. Procedure in docs/SETUP-ANDROID-KEYSTORE.md.",
+    "ms_store": "msix-built",
+    "ms_store_notes": "LuminaDeckStudio.msix at repo root. Needs Studio screenshots + Partner Center submission. Copy ready at docs/MS-STORE-SUBMISSION-COPY.md."
+  },
+  "competitors": [
+    "Stream Deck Mobile (Elgato)",
+    "Touch Portal",
+    "Loupedeck",
+    "Mountain DisplayPad",
+    "Companion (bitfocus/companion, open-source)"
+  ],
+  "protected_paths": [
+    "apps/companion/src-tauri/Cargo.toml",
+    "apps/companion/src-tauri/src/**",
+    "apps/companion/src-tauri/tauri.conf.json",
+    "apps/companion/src-tauri/Package.appxmanifest",
+    "packages/shared/src/protocol/**",
+    "apps/mobile/app.json",
+    "apps/mobile/android/app/build.gradle",
+    "scripts/sync-to-mac.sh",
+    "scripts/ios-archive-and-upload.sh",
+    "scripts/build-msix.ps1",
+    "scripts/patch-react-native-push-notification-ios.cjs",
+    ".keys/**",
+    "supabase/**"
+  ],
+  "created_files": [
+    ".claude/agents/lumina-deck-specialist.md",
+    ".claude/state/specialist.json",
+    ".claude/staging/AGENTS.md"
+  ],
+  "feature_queue": [
+    {
+      "id": "feat-2026-05-19-ios-screenshots-69-and-ipad13",
+      "title": "Generate iOS sim screenshots for 6.9 inch iPhone and 13 inch iPad",
+      "source": "specialist-onboarding",
+      "added": "2026-05-19",
+      "priority": "H",
+      "notes": "TestFlight submission blocker. Run via Mac at rsaczr@10.0.0.50."
+    },
+    {
+      "id": "feat-2026-05-19-submit-testflight-build13",
+      "title": "Submit iOS Build 13 to TestFlight",
+      "source": "specialist-onboarding",
+      "added": "2026-05-19",
+      "priority": "H",
+      "notes": "Depends on feat-2026-05-19-ios-screenshots-69-and-ipad13. ASC pipeline already wired."
+    },
+    {
+      "id": "feat-2026-05-19-android-keystore-and-sign-aab",
+      "title": "Generate Android upload keystore + sign release AAB",
+      "source": "specialist-onboarding",
+      "added": "2026-05-19",
+      "priority": "H",
+      "notes": "Procedure in docs/SETUP-ANDROID-KEYSTORE.md. Touches protected build.gradle — will require 6-of-6 judge consensus if autonomous; in orientation/copilot it just becomes a manual handoff to user."
+    },
+    {
+      "id": "feat-2026-05-19-verify-landing-page",
+      "title": "Verify luminaaio.com/luminadeck landing page live + privacy subpage routable",
+      "source": "specialist-onboarding",
+      "added": "2026-05-19",
+      "priority": "M",
+      "notes": "Referenced from app.json privacy manifest AND Tauri longDescription. Broken landing = TestFlight reviewer can't reach privacy policy."
+    }
+  ],
+  "completed_features": [],
+  "pending_proposals": [],
+  "blocked_plans": [],
+  "default_branch": null,
+  "test_command": null,
+  "test_command_candidate": "npx turbo run test typecheck",
+  "lint_command": null,
+  "lint_command_candidate": "pnpm lint",
+  "build_command": null,
+  "build_command_candidate": "pnpm build",
+  "ci_detected": null,
+  "last_run": null,
+  "last_orientation": null,
+  "ultrareview_enforcement": "calibration",
+  "last_ultrareview_run": null,
+  "last_ultrareview_findings_count": null,
+  "code_review_enforcement": "calibration",
+  "last_code_review_run": null,
+  "last_code_review_findings_count": null,
+  "secret_scan_enforcement": "calibration",
+  "last_secret_scan_run": null,
+  "last_secret_scan_findings_count": null,
+  "secret_scan_allowlist": [
+    ".keys/AuthKey_5G4BLJ82KH.p8",
+    ".keys/AuthKey_94JNRX3Q4M.p8",
+    "~/Downloads/AuthKey_*.p8"
+  ],
+  "team_mode_pilot": false,
+  "branch_prefix": "specialist/",
+  "daily_routine_time": "09:15 CT",
+  "notes": [
+    "PHASED BUILD: N/A — no Wright v1/v2/v3 plan exists (predates Wright). App is BUILT + submission-ready (iOS build 13, MSIX built), so it is effectively v1-complete / launch-prep, not mid-phase. current_phase='launch-prep (effectively v1-complete; no Wright phased plan)'. Treat as launch-prep -> maintenance against docs/LUMINADECK-LAUNCH-PLAN.md. Do NOT fabricate Wright phases.",
+    "2026-05-20 AMBIGUITY FLAG (phase_ambiguity_needs_user_call=true): user should confirm framing — (a) treat as maintenance against LAUNCH-PLAN.md [recommended, since it's built + submittable], OR (b) commission a Wright v1/v2/v3 if they want to phase future feature work. Current pointers assume (a).",
+    "2026-05-19: Onboarded by specialist agent bootstrap. specialist_init.py does not yet exist under ~/.claude/scripts/ — only sj_init.py is present. Gate flips currently require direct edit of this file.",
+    "2026-05-19: AGENTS.md staged at .claude/staging/AGENTS.md but NOT yet copied to repo root. User must copy when ready.",
+    "2026-05-19: No Wright v3 plan exists. Using docs/LUMINADECK-LAUNCH-PLAN.md (the 5-of-5 ratified plan) as proxy roadmap until Wright produces a v3.",
+    "2026-05-19: Project lives at C:/Dev/LuminaDeck/, NOT C:/Users/czr05/LuminaDeck/. All other Steve Jobs onboarded apps live under czr05/. Path-assumption bugs in any inherited tooling will surface here first.",
+    "2026-05-19: KnowledgeBase/research/app-building/ directory does not exist yet. Step 10 of 'Read these on every invocation' is a noop until seeded."
+  ]
+}

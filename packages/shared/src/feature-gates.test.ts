@@ -86,16 +86,20 @@ describe('FEATURE_GATES', () => {
     expect(COMPANION_CAPABILITIES).toEqual(expected);
     expect(COMPANION_CAPABILITIES).toContain('text_input');
     expect(COMPANION_CAPABILITIES).toContain('trackpad');
-    expect(COMPANION_CAPABILITIES).not.toContain('obs');
+    expect(COMPANION_CAPABILITIES).toContain('obs');
 
     const typedTextInput: CompanionCapability = 'text_input';
     const typedTrackpad: CompanionCapability = 'trackpad';
     expect([typedTextInput, typedTrackpad]).toEqual(['text_input', 'trackpad']);
 
-    // OBS stays off until FEATURE_GATES.obs.free/pro flips true.
-    // @ts-expect-error OBS is intentionally not an enabled CompanionCapability.
-    const _obsCapability: CompanionCapability = 'obs';
-    expect(_obsCapability).toBe('obs');
+    // OBS is Pro-only (M2 decision 2026-05-27): FEATURE_GATES.obs.pro === true
+    // while .free === false. It is still an enabled CompanionCapability because
+    // isFeatureEnabledForAnyTier() is true when any tier has access (pro here),
+    // so the companion advertises it and the Pro entitlement gates use at runtime.
+    expect(FEATURE_GATES.obs.free).toBe(false);
+    expect(FEATURE_GATES.obs.pro).toBe(true);
+    const obsCapability: CompanionCapability = 'obs';
+    expect(obsCapability).toBe('obs');
   });
 
   it('keeps Rust ADVERTISED_CAPABILITIES in sync with the TS map', () => {

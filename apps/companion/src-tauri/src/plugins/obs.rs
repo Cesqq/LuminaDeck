@@ -29,15 +29,28 @@ impl Default for ObsConfig {
     }
 }
 
+type ObsWriter = futures_util::stream::SplitSink<
+    tokio_tungstenite::WebSocketStream<
+        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+    >,
+    Message,
+>;
+
+type ObsReader = futures_util::stream::SplitStream<
+    tokio_tungstenite::WebSocketStream<
+        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+    >,
+>;
+
 /// Internal connection state shared across sync/async boundaries.
 struct ObsInner {
     /// Sender half of the WebSocket, if connected.
-    writer: Option<futures_util::stream::SplitSink<
-        tokio_tungstenite::WebSocketStream<
-            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-        >,
-        Message,
-    >>,
+    writer: Option<ObsWriter>,
+    /// Receiver half of the WebSocket, retained so request types that need a
+    /// reply (e.g. `toggle_source`) can correlate responses by `requestId`.
+    /// Fire-and-forget commands ignore it; the helper drains any interleaved
+    /// event frames (op=5) while waiting for the matching response (op=7).
+    reader: Option<ObsReader>,
     available: bool,
     last_error: Option<String>,
 }
@@ -55,6 +68,7 @@ impl ObsPlugin {
         Self {
             inner: Arc::new(tokio::sync::Mutex::new(ObsInner {
                 writer: None,
+                reader: None,
                 available: false,
                 last_error: None,
             })),
@@ -225,19 +239,12 @@ impl ObsPlugin {
 
         log::info!("OBS WebSocket v5 connected to {host}:{port} (rpcVersion={rpc_version})");
 
-        // Drain incoming events in the background so the writer doesn't back-pressure.
-        tokio::spawn(async move {
-            while let Some(msg) = reader.next().await {
-                match msg {
-                    Ok(Message::Close(_)) => break,
-                    Err(_) => break,
-                    _ => { /* events discarded */ }
-                }
-            }
-        });
-
+        // Retain the reader so request/response commands can correlate replies.
+        // Interleaved event frames are drained on-demand inside
+        // `request_response`; fire-and-forget commands never touch the reader.
         let mut guard = inner.lock().await;
         guard.writer = Some(writer);
+        guard.reader = Some(reader);
         guard.available = true;
         guard.last_error = None;
 
@@ -278,6 +285,114 @@ impl ObsPlugin {
 
         Ok(())
     }
+
+    /// Send an OBS Request (OpCode 6) and wait for its matching Response
+    /// (OpCode 7), correlating by `requestId`. Interleaved event frames
+    /// (OpCode 5) and stray responses are skipped. Returns the response's
+    /// `responseData` object (or `Null` if the request carried no data).
+    ///
+    /// The whole exchange holds the `inner` lock so the request and its reply
+    /// stay paired even if multiple actions fire concurrently.
+    async fn request_response(
+        inner: &Arc<tokio::sync::Mutex<ObsInner>>,
+        request_type: &str,
+        request_data: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, ActionError> {
+        let mut guard = inner.lock().await;
+
+        let request_id = uuid::Uuid::new_v4().to_string();
+        let mut msg = json!({
+            "op": 6,
+            "d": {
+                "requestType": request_type,
+                "requestId": request_id,
+            }
+        });
+        if let Some(data) = request_data {
+            msg["d"]["requestData"] = data;
+        }
+
+        {
+            let writer = guard.writer.as_mut().ok_or_else(|| {
+                ActionError::IntegrationUnavailable("OBS is not connected".to_string())
+            })?;
+            writer
+                .send(Message::Text(msg.to_string().into()))
+                .await
+                .map_err(|e| {
+                    ActionError::IntegrationUnavailable(format!("OBS send failed: {e}"))
+                })?;
+        }
+
+        let reader = guard.reader.as_mut().ok_or_else(|| {
+            ActionError::IntegrationUnavailable("OBS is not connected".to_string())
+        })?;
+
+        // Wait for the matching response, draining events/unrelated replies.
+        loop {
+            let next = tokio::time::timeout(std::time::Duration::from_secs(5), reader.next())
+                .await
+                .map_err(|_| {
+                    ActionError::IntegrationUnavailable(format!(
+                        "Timed out waiting for OBS {request_type} response"
+                    ))
+                })?
+                .ok_or_else(|| {
+                    ActionError::IntegrationUnavailable(
+                        "OBS connection closed while awaiting response".to_string(),
+                    )
+                })?
+                .map_err(|e| {
+                    ActionError::IntegrationUnavailable(format!("OBS read error: {e}"))
+                })?;
+
+            let value: serde_json::Value = match next {
+                Message::Text(t) => serde_json::from_str(&t).map_err(|e| {
+                    ActionError::IntegrationUnavailable(format!("Invalid OBS JSON: {e}"))
+                })?,
+                Message::Close(_) => {
+                    return Err(ActionError::IntegrationUnavailable(
+                        "OBS closed the connection".to_string(),
+                    ));
+                }
+                // Ping/Pong/Binary — ignore and keep reading.
+                _ => continue,
+            };
+
+            let op = value.get("op").and_then(|v| v.as_u64()).unwrap_or(99);
+            if op != 7 {
+                // Not a RequestResponse (e.g. op=5 Event) — skip.
+                continue;
+            }
+            let resp_id = value
+                .pointer("/d/requestId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if resp_id != request_id {
+                // Response to some other in-flight request — skip.
+                continue;
+            }
+
+            let ok = value
+                .pointer("/d/requestStatus/result")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            if !ok {
+                let comment = value
+                    .pointer("/d/requestStatus/comment")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("no detail");
+                return Err(ActionError::IntegrationUnavailable(format!(
+                    "OBS {request_type} failed: {comment}"
+                )));
+            }
+
+            return Ok(value
+                .pointer("/d/responseData")
+                .cloned()
+                .unwrap_or(serde_json::Value::Null));
+        }
+    }
 }
 
 #[async_trait]
@@ -292,6 +407,7 @@ impl Plugin for ObsPlugin {
             "toggle_record".to_string(),
             "toggle_stream".to_string(),
             "toggle_source".to_string(),
+            "replay_buffer".to_string(),
         ]
     }
 
@@ -356,17 +472,76 @@ impl Plugin for ObsPlugin {
                             "toggle_source requires 'sourceName'".to_string(),
                         )
                     })?;
+                // Resolve the scene item id, read its current visibility,
+                // then write back the inverted value.
+                let id_resp = Self::request_response(
+                    &self.inner,
+                    "GetSceneItemId",
+                    Some(json!({ "sceneName": scene, "sourceName": source })),
+                )
+                .await?;
+                let scene_item_id = id_resp
+                    .get("sceneItemId")
+                    .and_then(|v| v.as_i64())
+                    .ok_or_else(|| {
+                        ActionError::IntegrationUnavailable(format!(
+                            "OBS did not return a sceneItemId for source '{source}' in scene '{scene}'"
+                        ))
+                    })?;
+
+                let enabled_resp = Self::request_response(
+                    &self.inner,
+                    "GetSceneItemEnabled",
+                    Some(json!({ "sceneName": scene, "sceneItemId": scene_item_id })),
+                )
+                .await?;
+                let currently_enabled = enabled_resp
+                    .get("sceneItemEnabled")
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| {
+                        ActionError::IntegrationUnavailable(
+                            "OBS did not return sceneItemEnabled".to_string(),
+                        )
+                    })?;
+
                 Self::send_request(
                     &self.inner,
-                    "GetSceneItemList",
-                    Some(json!({ "sceneName": scene })),
+                    "SetSceneItemEnabled",
+                    Some(json!({
+                        "sceneName": scene,
+                        "sceneItemId": scene_item_id,
+                        "sceneItemEnabled": !currently_enabled,
+                    })),
                 )
                 .await?;
                 log::info!(
-                    "OBS toggle_source: scene={}, source={} (full toggle deferred)",
-                    scene, source
+                    "OBS toggle_source: scene={}, source={}, {} -> {}",
+                    scene,
+                    source,
+                    currently_enabled,
+                    !currently_enabled
                 );
                 Ok(())
+            }
+            "replay_buffer" => {
+                // Saves the current replay buffer to disk. Requires the replay
+                // buffer to be running in OBS; the request errors otherwise.
+                Self::send_request(&self.inner, "SaveReplayBuffer", None).await
+            }
+            "obs_screenshot" => {
+                // TODO(M2-followup): SaveSourceScreenshot requires an
+                // `imageFilePath` (plus `imageFormat`) for the destination, and
+                // there is no companion-side convention yet for where/how to
+                // write screenshot files or surface them back to the user. The
+                // action form only collects scene/source, so the path policy is
+                // unresolved. Deferring with a clear failure rather than
+                // inventing a save location.
+                Err(ActionError::IntegrationUnavailable(
+                    "OBS screenshot is not available yet — saving a screenshot \
+                     needs a destination path, which Lumina Deck does not \
+                     configure yet."
+                        .to_string(),
+                ))
             }
             other => Err(ActionError::IntegrationUnavailable(format!(
                 "Unknown OBS command: {other}"
@@ -431,6 +606,7 @@ impl Plugin for ObsPlugin {
         {
             let mut guard = self.inner.lock().await;
             guard.writer = None;
+            guard.reader = None;
             guard.available = false;
         }
         if let Err(e) = Self::try_connect(&self.inner, &host, port).await {

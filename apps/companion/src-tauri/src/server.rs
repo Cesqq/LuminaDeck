@@ -49,6 +49,7 @@ const ADVERTISED_CAPABILITIES: &[&str] = &[
     "system_action",
     "multi_action",
     "text_input",
+    "obs",
     "discord",
     "macro",
     "window_monitor",

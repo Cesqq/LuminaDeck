@@ -19,7 +19,7 @@ export const FEATURE_GATES = {
   multi_action: { free: false, pro: true },
   text_input: { free: true, pro: true },
   trackpad: { free: true, pro: true },
-  obs: { free: false, pro: false },
+  obs: { free: false, pro: true },
   discord: { free: false, pro: true },
   macro: { free: false, pro: true },
   window_monitor: { free: true, pro: true },
