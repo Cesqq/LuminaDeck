@@ -1,0 +1,41 @@
+{
+  "feat_id": "feat-2026-06-11-obs-wiring-decision",
+  "decision": "Should Action::OBS (apps/companion/src-tauri/src/actions/mod.rs:106) be wired to the existing ObsPlugin tonight (Path A), or stay gated with truthful copy and a defined next milestone (Path B)?",
+  "date": "2026-06-11",
+  "session": "fix/pre-submission-hardening (pre-submission hardening run, work order via Saitama sweep 2026-06-10)",
+  "panel_mechanics": "5 independent code-grounded judge passes run in-session (no Task-spawn tool in this environment). Every cited file/line was read directly from the working tree at 8848215 during this session. Judge-discipline rule applied: no guessed facts.",
+  "verdict": "PATH B — unanimous 5/5",
+  "scores": {
+    "architecture": { "path_a": 4, "path_b": 9 },
+    "risk_regression": { "path_a": 3, "path_b": 9 },
+    "product_revenue": { "path_a": 2, "path_b": 9 },
+    "ux_impact": { "path_a": 5, "path_b": 8 },
+    "scope": { "path_a": 3, "path_b": 9 }
+  },
+  "key_evidence": [
+    "Wiring is mechanically contained (~4 files; mirrors the pairing_auth threading pattern, server.rs:282-464; AppState.plugin_manager Arc<tokio::sync::RwLock<PluginManager>> lib.rs:61) — containment was NOT the blocker.",
+    "Correct wiring is blocked on entitlement context: the companion has none. The phone sends proStatus in hello (packages/shared/src/protocol.ts:21, apps/mobile/src/lib/websocket.ts:157) but Rust drops it — DeviceIdentifiedEvent (server.rs:182-187) and ConnectionState (server.rs:62-68) have no proStatus field.",
+    "Free-tier leak is real, not hypothetical: stream_deck_import.rs:246-260 maps Elgato OBS actions to {type:'obs'}; HomeScreen.tsx:110-117 sends any button.action with no tier check; the actions/mod.rs stub is the ONLY enforcement. Wiring removes the only backstop and hands the flagship Lifetime-Pro differentiator to the Stream-Deck-migrant import audience for free.",
+    "Pro users gain almost nothing tonight: EditorScreen ACTION_TYPES (EditorScreen.tsx:93-100) has no obs entry (M2 Step 3 not executed), and Studio mis-detects Pro phones as Free because the dropped proStatus means main.js:212 always destructures undefined (editor.js:31 stays pessimistic).",
+    "Zero Rust tests cover the dispatch path (cfg(test) exists only in discovery.rs, intent_http.rs, intent_endpoint.rs, stream_deck_import.rs, plugins/sdk_runtime.rs).",
+    "M2 plan (.claude/plans/feat-2026-05-30-obs-pro-gate-m2.md) explicitly rules further src-tauri/src/** changes out of scope and reserves the FEATURE_GATES de-dup stylistic fork for the user.",
+    "Store/reviewer/paywall copy verified CLEAN of OBS claims: PaywallScreen.tsx (no match), docs/APP-STORE-REVIEW-NOTES.md, docs/MS-STORE-SUBMISSION-COPY.md, docs/GOOGLE-PLAY-GUIDE.md (only 'Obsidian' theme matches). iOS never imports OBS (companion-only), so Path B has zero iOS-submission impact."
+  ],
+  "actions_taken_tonight": [
+    "Stub error message corrected to be truthful (was 'Install OBS and restart companion' even when OBS showed Available in PluginsScreen): now 'OBS control isn't available in this version of Lumina Deck Companion.' (commit 39880b6, cargo check clean).",
+    "Gate documented in-code with the panel decision and the three prerequisites for wiring.",
+    "Confirmed no store/paywall/reviewer copy advertises OBS control — nothing to retract."
+  ],
+  "next_milestone": {
+    "name": "OBS end-to-end (Pro-gated)",
+    "steps": [
+      "1. Parse proStatus from hello in server.rs into ConnectionState + DeviceIdentifiedEvent (also fixes Studio always-Free detection, main.js:212).",
+      "2. Execute-time tier check in the WS execute arm for gated action types (obs/discord/multi_action), driven by the same FEATURE_GATES values (client-asserted tier; same trust level as the editor gate).",
+      "3. M2 Step 3: add obs to EditorScreen ACTION_TYPES — needs Czr's call on the reserved stylistic fork (hardcoded proOnly vs FEATURE_GATES derivation).",
+      "4. Thread Arc<RwLock<PluginManager>> start_server -> handle_websocket -> handle_message -> execute_action (pattern proven by pairing_auth) and route Action::OBS to ObsPlugin.execute.",
+      "5. Decide PluginsScreen 'Available' badge + Studio free-banner copy (currently promise OBS control).",
+      "6. cargo check + add first dispatch-path Rust tests + node scripts/test-protocol.js E2E with OBS running."
+    ],
+    "do_not": "Do not advertise OBS control in any store copy, paywall, or announce post until step 4 ships and is demoed."
+  }
+}
