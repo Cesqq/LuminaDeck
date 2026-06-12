@@ -104,9 +104,21 @@ pub fn execute_action(action: &Action) -> std::pin::Pin<Box<dyn std::future::Fut
                 Ok(())
             }
             Action::OBS { command, .. } => {
-                // OBS integration will be built in Phase F
-                log::warn!("OBS action '{}' not yet implemented", command);
-                Err(ActionError::IntegrationUnavailable("OBS Studio integration not yet available. Install OBS and restart companion.".to_string()))
+                // INTENTIONAL GATE — do not wire to plugins::obs::ObsPlugin yet.
+                // The real OBS WebSocket v5 client exists (plugins/obs.rs) and is
+                // reachable from the desktop Tauri commands (get_plugin_status /
+                // test_plugin / configure_plugin), but routing phone `execute`
+                // dispatch here would leak the Pro-only OBS feature to free tier:
+                // this function has no entitlement context, the companion drops
+                // the phone's `proStatus` (DeviceIdentifiedEvent has no such
+                // field), and imported Stream Deck profiles already carry
+                // `obs`-typed actions (stream_deck_import.rs). Wiring happens in
+                // the "OBS end-to-end" milestone together with (1) proStatus
+                // plumbed into ConnectionState, (2) an execute-time tier check,
+                // and (3) the EditorScreen `obs` entry (M2 Step 3).
+                // Decision: 5-judge panel, 2026-06-11 pre-submission hardening.
+                log::warn!("OBS action '{}' blocked: execute-path OBS control is not enabled in this build", command);
+                Err(ActionError::IntegrationUnavailable("OBS control isn't available in this version of Lumina Deck Companion.".to_string()))
             }
             Action::Discord { command, text } => {
                 // v1.4: most Discord controls work via the default
