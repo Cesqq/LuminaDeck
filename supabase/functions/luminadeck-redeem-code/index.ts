@@ -23,6 +23,18 @@ interface RedeemRequestBody {
 }
 
 const VALID_PLATFORMS = new Set(['ios', 'android', 'windows']);
+
+/**
+ * Strict charset gates for comp codes. Codes are letters/digits with optional
+ * hyphen/space separators (e.g. "LUMI-2026-XYZ"); after normalization they
+ * must be pure uppercase alphanumerics. Anything else is rejected BEFORE the
+ * value reaches the database query, so user input can never be interpreted as
+ * PostgREST filter grammar (a raw `.or(...)` interpolation here previously
+ * allowed `code=x,code.not.is.null` to match an arbitrary stored code —
+ * 2026-06-10 security sweep, paywall-bypass finding).
+ */
+const RAW_CODE_RE = /^[A-Za-z0-9][A-Za-z0-9\s-]{2,62}[A-Za-z0-9]$/;
+const NORMALIZED_CODE_RE = /^[A-Z0-9]{4,32}$/;
 const TIER_DURATION_DAYS: Record<string, number | null> = {
   lifetime: null,
   pro_1y: 365,
@@ -76,20 +88,34 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ ok: false, reason: 'invalid_request' }, 400);
   }
 
+  // Reject any code whose charset could carry filter syntax. Same end-user
+  // outcome as a typo'd code: it does not exist.
+  if (!RAW_CODE_RE.test(rawCode)) {
+    return jsonResponse({ ok: false, reason: 'not_found' });
+  }
+
   // Normalize: uppercase + strip spaces and hyphens for matching, but match
   // both the as-stored code and the normalized form
   const normalized = rawCode.toUpperCase().replace(/[\s-]/g, '');
+
+  if (!NORMALIZED_CODE_RE.test(normalized)) {
+    return jsonResponse({ ok: false, reason: 'not_found' });
+  }
 
   const supabase: SupabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   );
 
-  // Look up the code (case-insensitive, dash-insensitive)
+  // Look up the code (case-insensitive, dash-insensitive). Parameterized
+  // `.in()` — candidate values are passed as data, never interpolated into
+  // filter grammar (and the charset gates above guarantee they contain no
+  // reserved characters anyway).
+  const candidates = [...new Set([rawCode, normalized, rawCode.toUpperCase()])];
   const { data: codeRow, error: lookupErr } = await supabase
     .from('luminadeck_comp_codes')
     .select('code, tier, max_redemptions, redemptions_used, expires_at')
-    .or(`code.eq.${rawCode},code.eq.${normalized},code.eq.${rawCode.toUpperCase()}`)
+    .in('code', candidates)
     .limit(1)
     .maybeSingle();
 
