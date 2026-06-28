@@ -8,9 +8,22 @@
  */
 
 import { Platform } from 'react-native';
-import type { ProStatus } from '@luminadeck/shared';
+import type { ProStatus, ProPlan } from '@luminadeck/shared';
 import { saveProStatus } from './pro';
 import { getDeviceId } from './deviceId';
+
+export type RedeemTier = 'lifetime' | 'pro_1y' | 'pro_30d';
+
+/**
+ * Maps a comp-code tier to the local ProPlan. Single source of truth shared by
+ * the persist path and proStatusFromRedeem so the stored and in-memory plan
+ * can never diverge.
+ */
+const TIER_TO_PLAN: Record<RedeemTier, ProPlan> = {
+  lifetime: 'lifetime',
+  pro_1y: 'yearly',
+  pro_30d: 'monthly',
+};
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -25,7 +38,7 @@ export type RedeemReason =
   | 'not_configured';
 
 export type RedeemResult =
-  | { ok: true; tier: 'lifetime' | 'pro_1y' | 'pro_30d'; expiresAt: string | null; idempotent?: boolean }
+  | { ok: true; tier: RedeemTier; expiresAt: string | null; idempotent?: boolean }
   | { ok: false; reason: RedeemReason };
 
 /**
@@ -77,12 +90,24 @@ export async function redeemCompCode(args: { code: string }): Promise<RedeemResu
   }
 
   if (body.ok === true && typeof body.tier === 'string') {
-    // Persist locally so subsequent app launches see Pro without round-tripping
-    await saveProStatus(true, 'comp_code');
+    const expiresAt: string | null = body.expiresAt ?? null;
+    // Persist locally so subsequent app launches see Pro without round-tripping.
+    // Thread the server entitlement through verbatim: the plan implied by the
+    // tier and the server-issued expiry. A `lifetime` code has expiresAt=null,
+    // so no expiry is persisted and Pro is permanent; `pro_1y` / `pro_30d` codes
+    // carry a real expiry that loadProStatus enforces (previously this saved a
+    // rolling 7-day grace as the expiry, granting permanent Pro after restart —
+    // 2026-06-27 hardening finding).
+    await saveProStatus({
+      isPro: true,
+      source: 'comp_code',
+      plan: TIER_TO_PLAN[body.tier as RedeemTier] ?? 'lifetime',
+      expiresAt,
+    });
     return {
       ok: true,
       tier: body.tier,
-      expiresAt: body.expiresAt ?? null,
+      expiresAt,
       idempotent: body.idempotent === true,
     };
   }
@@ -114,10 +139,9 @@ export function describeRedeemFailure(reason: RedeemReason): string {
  * Build a Pro status object from a successful redemption result.
  */
 export function proStatusFromRedeem(result: Extract<RedeemResult, { ok: true }>): ProStatus {
-  const planMap = { lifetime: 'lifetime', pro_1y: 'yearly', pro_30d: 'monthly' } as const;
   return {
     isPro: true,
-    plan: planMap[result.tier],
+    plan: TIER_TO_PLAN[result.tier],
     source: 'comp_code',
     purchaseDate: new Date().toISOString(),
     expiresAt: result.expiresAt ?? undefined,

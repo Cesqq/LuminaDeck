@@ -107,87 +107,73 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   );
 
-  // Look up the code (case-insensitive, dash-insensitive). Parameterized
-  // `.in()` — candidate values are passed as data, never interpolated into
-  // filter grammar (and the charset gates above guarantee they contain no
-  // reserved characters anyway).
-  const candidates = [...new Set([rawCode, normalized, rawCode.toUpperCase()])];
-  const { data: codeRow, error: lookupErr } = await supabase
-    .from('luminadeck_comp_codes')
-    .select('code, tier, max_redemptions, redemptions_used, expires_at')
-    .in('code', candidates)
-    .limit(1)
-    .maybeSingle();
+  // Single atomic call. `redeem_comp_code` (migration 003) does lookup,
+  // idempotency, expiry, cap enforcement, insert and counter bump inside one
+  // transaction with `SELECT ... FOR UPDATE` on the code row. That row lock is
+  // what makes the cap race-proof: two devices redeeming the same limited-use
+  // code concurrently are serialized, so only `max_redemptions` of them ever
+  // succeed. The cap is never checked in JS, where a check-then-insert window
+  // let concurrent requests both pass (2026-06-27 hardening finding).
+  //
+  // We send the normalized (uppercase, dash/space-stripped) code as the match
+  // key; that is the canonical form codes are stored in. The charset gates
+  // above already guarantee it is pure [A-Z0-9].
+  const { data: rpcData, error: rpcErr } = await supabase
+    .rpc('redeem_comp_code', {
+      p_code: normalized,
+      p_device_id: deviceId,
+      p_platform: platform || null,
+      p_app_version: appVersion || null,
+    })
+    .single();
 
-  if (lookupErr) {
-    console.error('[redeem-code] lookup error:', lookupErr);
-    return jsonResponse({ ok: false, reason: 'invalid_request' }, 500);
-  }
-  if (!codeRow) {
-    return jsonResponse({ ok: false, reason: 'not_found' });
-  }
-
-  if (codeRow.expires_at && new Date(codeRow.expires_at).getTime() < Date.now()) {
-    return jsonResponse({ ok: false, reason: 'expired' });
-  }
-
-  // Has this device already redeemed this code? (idempotency for retries)
-  const { data: priorRedemption } = await supabase
-    .from('luminadeck_comp_redemptions')
-    .select('id, redeemed_at')
-    .eq('code', codeRow.code)
-    .eq('device_id', deviceId)
-    .maybeSingle();
-
-  if (priorRedemption) {
-    // Idempotent return — same device redeeming same code is treated as success
-    return jsonResponse({
-      ok: true,
-      tier: codeRow.tier,
-      expiresAt: tierExpiry(codeRow.tier, priorRedemption.redeemed_at),
-      idempotent: true,
-    });
-  }
-
-  if (codeRow.redemptions_used >= codeRow.max_redemptions) {
-    return jsonResponse({ ok: false, reason: 'exhausted' });
-  }
-
-  // Insert redemption (the unique index on (code, device_id) is the final
-  // guard against race conditions if two devices hit the cap concurrently)
-  const { error: insertErr } = await supabase
-    .from('luminadeck_comp_redemptions')
-    .insert({
-      code: codeRow.code,
-      device_id: deviceId,
-      platform: platform || null,
-      app_version: appVersion || null,
-    });
-
-  if (insertErr) {
-    // Could be the uniqueness race; treat as already redeemed
-    if (insertErr.code === '23505') {
+  if (rpcErr) {
+    // 23505 = unique-violation: a concurrent retry from this same device beat
+    // us to the redemption row. Surface it as already-redeemed rather than 500.
+    if ((rpcErr as { code?: string }).code === '23505') {
       return jsonResponse({ ok: false, reason: 'already_redeemed' });
     }
-    console.error('[redeem-code] insert error:', insertErr);
+    console.error('[redeem-code] redeem error:', rpcErr);
     return jsonResponse({ ok: false, reason: 'invalid_request' }, 500);
   }
 
-  // Bump the counter (best-effort; if this fails, the redemption row still
-  // exists and the code is functionally consumed)
-  await supabase.rpc('increment_redemption', { p_code: codeRow.code }).catch(() => {});
-  // Fallback if RPC isn't installed: do an arithmetic update
-  await supabase
-    .from('luminadeck_comp_codes')
-    .update({ redemptions_used: codeRow.redemptions_used + 1 })
-    .eq('code', codeRow.code)
-    .eq('redemptions_used', codeRow.redemptions_used);
+  const outcome = rpcData as {
+    result: 'redeemed' | 'already_redeemed' | 'not_found' | 'expired' | 'exhausted';
+    tier: string | null;
+    redeemed_at: string | null;
+  } | null;
 
-  return jsonResponse({
-    ok: true,
-    tier: codeRow.tier,
-    expiresAt: tierExpiry(codeRow.tier, new Date().toISOString()),
-  });
+  if (!outcome) {
+    console.error('[redeem-code] empty redeem result');
+    return jsonResponse({ ok: false, reason: 'invalid_request' }, 500);
+  }
+
+  switch (outcome.result) {
+    case 'not_found':
+      return jsonResponse({ ok: false, reason: 'not_found' });
+    case 'expired':
+      return jsonResponse({ ok: false, reason: 'expired' });
+    case 'exhausted':
+      return jsonResponse({ ok: false, reason: 'exhausted' });
+    case 'already_redeemed':
+      // Idempotent success — same device, same code. Expiry is computed from
+      // the ORIGINAL redemption time so the granted window doesn't slide.
+      return jsonResponse({
+        ok: true,
+        tier: outcome.tier,
+        expiresAt: tierExpiry(outcome.tier ?? '', outcome.redeemed_at ?? new Date().toISOString()),
+        idempotent: true,
+      });
+    case 'redeemed':
+      return jsonResponse({
+        ok: true,
+        tier: outcome.tier,
+        expiresAt: tierExpiry(outcome.tier ?? '', outcome.redeemed_at ?? new Date().toISOString()),
+      });
+    default:
+      console.error('[redeem-code] unexpected redeem result:', outcome.result);
+      return jsonResponse({ ok: false, reason: 'invalid_request' }, 500);
+  }
 });
 
 function tierExpiry(tier: string, redeemedAtIso: string): string | null {

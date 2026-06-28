@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import * as Sentry from '@sentry/react-native';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,26 +22,16 @@ import { KeyboardScreen } from './src/screens/KeyboardScreen';
 import { loadProfile, loadSettings, saveProfile } from './src/lib/storage';
 import { initTelemetry, track } from './src/lib/telemetry';
 import { initPredictor } from './src/lib/predictor';
+import { initCrashReporting, setCrashReportingOptIn, wrap as sentryWrap } from './src/lib/crashReporting';
 import { TELEMETRY_EVENTS } from '@luminadeck/shared';
 
 const ONBOARDING_KEY = '@luminadeck/onboarding_complete';
 const APP_VERSION = '1.4.0';
 
-// Sentry crash/error reporting. The DSN is a public client key, so an inline
-// fallback is safe; EXPO_PUBLIC_SENTRY_DSN can override it per build/env.
-// NOTE: source-map upload is intentionally NOT configured here — the
-// build-scoped auth token is being rotated. Wire it via the
-// @sentry/react-native Metro/EAS plugin (and a SENTRY_AUTH_TOKEN env var,
-// never committed) once the new token is issued.
-const SENTRY_DSN =
-  process.env.EXPO_PUBLIC_SENTRY_DSN ??
-  'https://e9cbe8afcf5f48672ee954986c070423@o4511429577146368.ingest.us.sentry.io/4511431806746624';
-
-Sentry.init({
-  dsn: SENTRY_DSN,
-  // Capture a sample of performance traces. Tune down if volume is high.
-  tracesSampleRate: 1.0,
-});
+// Crash/error reporting. Initialized DISABLED — it is opt-in diagnostics
+// (off by default, per docs/APP-STORE-REVIEW-NOTES.md) and only starts
+// transmitting once the persisted opt-in loads below and flips the gate.
+initCrashReporting();
 
 type TabId = 'home' | 'connect' | 'auto' | 'plugins' | 'pages' | 'keyboard' | 'settings';
 
@@ -77,6 +66,9 @@ function AppContent() {
     // salt so the debug overlay can preview what we *would* send.
     loadSettings()
       .then(async (s) => {
+        // Reflect the persisted crash-diagnostics consent. Sentry was init'd
+        // disabled above; this is the only place it can start transmitting.
+        setCrashReportingOptIn(s.crashReportingOptIn);
         await initTelemetry({ optIn: s.telemetryOptIn, version: APP_VERSION });
         // Predictor profile id is seeded from the persisted profile so the
         // first-press Markov transition is stored against the right key.
@@ -364,9 +356,10 @@ function App() {
   );
 }
 
-// Sentry.wrap enables automatic performance tracing of the root component
-// tree and ensures the error boundary is in place around the whole app.
-export default Sentry.wrap(App);
+// sentryWrap enables automatic performance tracing of the root component tree
+// and ensures the error boundary is in place around the whole app. The wrap is
+// inert until the user opts into crash diagnostics (gated in crashReporting.ts).
+export default sentryWrap(App);
 
 const styles = StyleSheet.create({
   root: {

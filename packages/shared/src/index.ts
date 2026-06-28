@@ -1,4 +1,5 @@
 export * from './types';
+export * from './entitlement';
 export * from './feature-gates';
 export * from './protocol';
 export * from './keys';

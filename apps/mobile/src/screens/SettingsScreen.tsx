@@ -26,6 +26,7 @@ import { exportProfile, importProfile } from '../lib/profileExport';
 import { useProfiles } from '../contexts/ProfileContext';
 import type { AppSettings, HapticIntensity } from '../lib/storage';
 import { getRecentEvents, setOptIn as setTelemetryOptIn, type TelemetryEventRecord } from '../lib/telemetry';
+import { setCrashReportingOptIn } from '../lib/crashReporting';
 import { setPredictorEnabled } from '../lib/predictor';
 import { PaywallScreen } from './PaywallScreen';
 import { ProfileManagerScreen } from './ProfileManagerScreen';
@@ -75,6 +76,10 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
         // Keep the live telemetry module in sync with persisted setting so
         // flipping the toggle takes effect immediately, not just next launch.
         setTelemetryOptIn(value as boolean);
+      }
+      if (key === 'crashReportingOptIn') {
+        // Same: flip the live Sentry consent gate immediately.
+        setCrashReportingOptIn(value as boolean);
       }
       if (key === 'predictorEnabled') {
         setPredictorEnabled(value as boolean);
@@ -581,6 +586,32 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             EU-hosted analytics so we can prioritize features. Never includes
             tile labels, window titles, or any text you type. Device ID is a
             random salt that rotates every 90 days.
+          </Text>
+          <View style={[styles.switchRow, { marginTop: 14 }]}>
+            <Text
+              style={[styles.settingLabel, { color: colors.text, flex: 1, paddingRight: 12 }]}
+              allowFontScaling
+              maxFontSizeMultiplier={1.5}
+            >
+              Share crash diagnostics
+            </Text>
+            <Switch
+              value={settings.crashReportingOptIn}
+              onValueChange={(v) => updateSetting('crashReportingOptIn', v)}
+              trackColor={{ false: colors.buttonBorder, true: colors.accent }}
+              thumbColor="#FFFFFF"
+              accessibilityRole="switch"
+              accessibilityLabel="Toggle crash diagnostics"
+              accessibilityState={{ checked: settings.crashReportingOptIn }}
+            />
+          </View>
+          <Text
+            style={[styles.privacyBody, { color: colors.textSecondary }]}
+            allowFontScaling
+            maxFontSizeMultiplier={1.5}
+          >
+            Off by default. Sends crash and error reports so we can fix bugs.
+            No tile labels, window titles, or text you type are included.
           </Text>
           <View style={[styles.switchRow, { marginTop: 14 }]}>
             <Text

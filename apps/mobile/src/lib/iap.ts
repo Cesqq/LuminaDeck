@@ -158,7 +158,13 @@ function checkEntitlement(customerInfo: CustomerInfo): boolean {
   const hasEntitlement = PRO_ENTITLEMENT in customerInfo.entitlements.active;
 
   if (hasEntitlement) {
-    saveProStatus(true, Platform.OS === 'android' ? 'google_play' : 'apple_iap');
+    // The Pro IAP is a one-time non-consumable: a permanent (lifetime) grant
+    // with no expiry. Omitting expiresAt keeps it never-expiring locally.
+    saveProStatus({
+      isPro: true,
+      source: Platform.OS === 'android' ? 'google_play' : 'apple_iap',
+      plan: 'lifetime',
+    });
   } else {
     clearProStatus();
   }

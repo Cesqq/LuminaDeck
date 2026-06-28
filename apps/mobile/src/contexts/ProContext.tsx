@@ -91,7 +91,15 @@ export function ProProvider({ children }: { children: React.ReactNode }) {
   const setPro = useCallback((status: ProStatus) => {
     setProStatus(status);
     if (status.isPro) {
-      saveProStatus(true, status.source);
+      // Persist the full entitlement so a time-limited grant keeps its real
+      // expiry across restarts (lifetime/IAP has expiresAt undefined => permanent).
+      saveProStatus({
+        isPro: true,
+        source: status.source,
+        plan: status.plan,
+        expiresAt: status.expiresAt ?? null,
+        purchaseDate: status.purchaseDate,
+      });
     } else {
       clearProStatus();
     }

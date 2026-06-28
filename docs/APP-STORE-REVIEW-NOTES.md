@@ -58,7 +58,7 @@ LuminaDeck is **freemium with a single one-time In-App Purchase** (see "In-App P
 ## Privacy
 
 - No third-party advertising SDKs and no ad tracking
-- Optional diagnostics/telemetry is **off by default**
+- Optional diagnostics/telemetry is **off by default**. Both opt-ins live under Settings → Privacy and are independent: "Share anonymous usage" (EU-hosted product analytics) and "Share crash diagnostics" (crash/error reporting). Nothing is transmitted by either until the user turns it on.
 - Account email is collected only if the user creates an optional account (Supabase); the app is fully usable without an account
 - Core functionality works entirely offline (local-network PC control)
 - Privacy Manifest included (NSPrivacyAccessedAPICategoryUserDefaults for AsyncStorage)
