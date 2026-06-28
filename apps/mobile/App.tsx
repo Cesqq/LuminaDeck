@@ -22,16 +22,10 @@ import { KeyboardScreen } from './src/screens/KeyboardScreen';
 import { loadProfile, loadSettings, saveProfile } from './src/lib/storage';
 import { initTelemetry, track } from './src/lib/telemetry';
 import { initPredictor } from './src/lib/predictor';
-import { initCrashReporting, setCrashReportingOptIn, wrap as sentryWrap } from './src/lib/crashReporting';
 import { TELEMETRY_EVENTS } from '@luminadeck/shared';
 
 const ONBOARDING_KEY = '@luminadeck/onboarding_complete';
 const APP_VERSION = '1.4.0';
-
-// Crash/error reporting. Initialized DISABLED — it is opt-in diagnostics
-// (off by default, per docs/APP-STORE-REVIEW-NOTES.md) and only starts
-// transmitting once the persisted opt-in loads below and flips the gate.
-initCrashReporting();
 
 type TabId = 'home' | 'connect' | 'auto' | 'plugins' | 'pages' | 'keyboard' | 'settings';
 
@@ -66,9 +60,6 @@ function AppContent() {
     // salt so the debug overlay can preview what we *would* send.
     loadSettings()
       .then(async (s) => {
-        // Reflect the persisted crash-diagnostics consent. Sentry was init'd
-        // disabled above; this is the only place it can start transmitting.
-        setCrashReportingOptIn(s.crashReportingOptIn);
         await initTelemetry({ optIn: s.telemetryOptIn, version: APP_VERSION });
         // Predictor profile id is seeded from the persisted profile so the
         // first-press Markov transition is stored against the right key.
@@ -356,10 +347,7 @@ function App() {
   );
 }
 
-// sentryWrap enables automatic performance tracing of the root component tree
-// and ensures the error boundary is in place around the whole app. The wrap is
-// inert until the user opts into crash diagnostics (gated in crashReporting.ts).
-export default sentryWrap(App);
+export default App;
 
 const styles = StyleSheet.create({
   root: {

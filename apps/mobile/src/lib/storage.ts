@@ -26,8 +26,6 @@ export interface AppSettings {
   pressSoundEnabled: boolean;
   proStatus: ProStatus;
   telemetryOptIn: boolean;
-  /** Crash/error diagnostics (Sentry). Off by default; separate from analytics. */
-  crashReportingOptIn: boolean;
   predictorEnabled: boolean;
 }
 
@@ -38,7 +36,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   pressSoundEnabled: false,
   proStatus: { isPro: false, plan: 'free', source: 'none' },
   telemetryOptIn: false,
-  crashReportingOptIn: false,
   predictorEnabled: false,
 };
 

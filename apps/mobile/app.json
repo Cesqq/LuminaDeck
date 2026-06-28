@@ -58,8 +58,7 @@
       "./plugins/withAndroidLaunchHardening",
       "expo-secure-store",
       "expo-camera",
-      "expo-image-picker",
-      "@sentry/react-native"
+      "expo-image-picker"
     ],
     "extra": {
       "eas": {
