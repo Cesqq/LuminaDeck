@@ -49,6 +49,7 @@ const ADVERTISED_CAPABILITIES: &[&str] = &[
     "system_action",
     "multi_action",
     "text_input",
+    "obs",
     "discord",
     "macro",
     "window_monitor",
@@ -330,6 +331,26 @@ pub async fn start_server(
     log::info!("WebSocket server listening on wss://0.0.0.0:{}", DEFAULT_PORT);
 
     // Also bind a plain WS listener for local network (iOS doesn't trust self-signed certs)
+    //
+    // SECURITY TODO (2026-06-10 sweep, MEDIUM — schedule with the next protocol bump):
+    // The hello/pair_request handshake sends `pairingSecret` in CLEARTEXT over this
+    // unencrypted listener. On a shared/hostile LAN an attacker can sniff the secret
+    // and replay it to gain authenticated action execution (keybind, app_launch,
+    // text_input, mouse, clipboard_set). Existing mitigations: secret-hash storage,
+    // 50 actions/sec rate limit, hardened app_launch (no shell, .exe/.lnk/.msc/.cpl
+    // only, no traversal). Recommended fix design — challenge-response so the secret
+    // never crosses the wire after QR pairing:
+    //   1. Companion includes a fresh random nonce in a pre-auth frame (or hello_ack
+    //      to an unauthenticated hello).
+    //   2. Phone responds with HMAC-SHA256(key = pairingSecret, msg = nonce) instead
+    //      of the raw secret; companion verifies against the stored secret.
+    //   3. Accept the legacy raw-secret hello for one protocol minor (gate via
+    //      MIN_CLIENT_PROTOCOL), then drop it.
+    //   4. Optional: bind this listener to the QR-advertised interface instead of
+    //      0.0.0.0, and document the same-LAN trust assumption.
+    // NOTE: this is a coordinated mobile+companion protocol change (bump
+    // PROTOCOL_VERSION here AND in packages/shared/src/protocol.ts — protected
+    // path). Do NOT patch it ad hoc on one side.
     let plain_addr = SocketAddr::from(([0, 0, 0, 0], PLAIN_WS_PORT));
     let plain_listener = TcpListener::bind(&plain_addr).await?;
     log::info!("Plain WebSocket server listening on ws://0.0.0.0:{}", PLAIN_WS_PORT);

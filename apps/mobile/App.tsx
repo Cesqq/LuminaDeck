@@ -329,7 +329,7 @@ function isLightColor(hex: string): boolean {
   return luminance > 0.5;
 }
 
-export default function App() {
+function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
@@ -346,6 +346,8 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default App;
 
 const styles = StyleSheet.create({
   root: {
